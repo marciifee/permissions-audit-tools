@@ -1,0 +1,1551 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline' blob:; worker-src blob:; style-src 'unsafe-inline'; img-src data: https://cosplaygif.de; connect-src 'none'; form-action 'none'; base-uri 'none'">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Exchange Permission Audit – WebGUI für Audit und Nachweis v1.0</title>
+<style>
+/* ==========================================================================
+   01. Zentrale Gestaltung: Farben und Schatten
+   ========================================================================== */
+
+/* CSS-Variablen gelten für das gesamte Dokument. var(--name) verwendet den jeweiligen Wert. */
+:root {
+    /* Hintergrund der gesamten Seite */
+    --bg: #0a1220;
+    /* Hintergrund von Karten und Inhaltsboxen */
+    --panel: #111b2c;
+    /* Zweite Hintergrundfarbe, etwa für Schaltflächen */
+    --panel2: #17253c;
+    /* Standardfarbe der Rahmen */
+    --border: #293a55;
+    /* Haupttextfarbe */
+    --text: #e8eef8;
+    /* Gedämpfte Farbe für Zusatzinformationen */
+    --muted: #91a3bb;
+    /* Primäre Akzentfarbe */
+    --accent: #4ea1ff;
+    /* Zweite Akzentfarbe */
+    --accent2: #22d3ee;
+    /* Farbe für Erfolg / positiven Status */
+    --ok: #42d99d;
+    /* Warnfarbe */
+    --warn: #f5c451;
+    /* Fehlerfarbe */
+    --danger: #ff6b6b;
+    /* Gemeinsamer Schatten für Karten und Inhaltsboxen */
+    --shadow: 0 8px 28px rgba(0,0,0,.22);
+}
+
+/* ==========================================================================
+   02. Grundlayout und Schrift
+   ========================================================================== */
+
+/* Padding und Rahmen zählen zur angegebenen Breite und Höhe eines Elements. */
+* {
+    box-sizing: border-box;
+}
+
+/* Standardränder entfernen; dunkler Hintergrund und gemeinsame Schrift mit Ersatzschriften. */
+html, body {
+    margin: 0;
+    min-height: 100%;
+    background: var(--bg);
+    color: var(--text);
+    font-family: Inter,"Segoe UI",Arial,sans-serif;
+}
+
+/* Formularelemente übernehmen die Schrift ihres Elternelements. */
+button, input, select {
+    font: inherit;
+}
+
+/* ==========================================================================
+   03. Kopfzeile, Marke und Schaltflächen
+   ========================================================================== */
+
+/* Kopfzeile bleibt beim Scrollen oben. z-index legt sie über den übrigen Inhalt. */
+header {
+    position: sticky;
+    top: 0;
+    z-index: 50;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 14px 20px;
+    background: rgba(10,18,32,.96);
+    border-bottom: 1px solid var(--border);
+}
+
+.brand {
+    display: flex;
+    gap: 11px;
+    align-items: center;
+}
+
+/* Quadratisches Textlogo; Grid zentriert den Inhalt in beide Richtungen. */
+.logo {
+    width: 42px;
+    height: 42px;
+    border-radius: 12px;
+    display: grid;
+    place-items: center;
+    font-weight: 800;
+    background: linear-gradient(135deg,#1d4ed8,#06b6d4);
+}
+
+h1 {
+    font-size: 18px;
+    margin: 0;
+}
+
+.brand small, .small {
+    color: var(--muted);
+    font-size: 11px;
+}
+
+/* Schaltflächen dürfen bei wenig Platz auf mehrere Zeilen umbrechen. */
+.actions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+button {
+    border: 1px solid var(--border);
+    background: var(--panel2);
+    color: var(--text);
+    padding: 8px 11px;
+    border-radius: 8px;
+    cursor: pointer;
+}
+
+button:hover {
+    border-color: var(--accent);
+}
+
+/* Deaktivierte Schaltflächen erscheinen blasser und erhalten einen anderen Mauszeiger. */
+button:disabled {
+    opacity: .45;
+    cursor: not-allowed;
+}
+
+/* !important gibt diesen Farben Vorrang gegenüber normalen CSS-Deklarationen. */
+.primary {
+    background: #175cd3!important;
+    border-color: #3279dd!important;
+}
+
+/* Optische Variante für gefährliche Aktionen; die eigentliche Funktion kommt aus HTML/JavaScript. */
+.danger {
+    background: #5c1d28!important;
+    border-color: #8f2b3b!important;
+}
+
+/* ==========================================================================
+   04. Seitenaufteilung und Navigation
+   ========================================================================== */
+
+/* 240 px breite Seitenleiste und flexibler Hauptbereich. minmax(0,1fr) erlaubt das Schrumpfen. */
+/* Die abgezogenen 71 px sind eine feste Annahme zur Höhe der Kopfzeile. */
+.layout {
+    display: grid;
+    grid-template-columns: 240px minmax(0,1fr);
+    min-height: calc(100vh - 71px);
+}
+
+aside {
+    padding: 14px;
+    background: #0d1626;
+    border-right: 1px solid var(--border);
+}
+
+.aside-title {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: .08em;
+    color: var(--muted);
+    padding: 7px 8px;
+}
+
+.nav {
+    width: 100%;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: transparent;
+    border-color: transparent;
+    margin: 3px 0;
+    text-align: left;
+}
+
+/* Ein Navigationselement mit beiden Klassen (nav und active) wird hervorgehoben. */
+.nav.active {
+    background: #172642;
+    border-color: #2d4670;
+}
+
+/* Kompaktes Zahlenabzeichen, beispielsweise für die Anzahl der Einträge. */
+.count {
+    min-width: 28px;
+    padding: 2px 7px;
+    text-align: center;
+    border-radius: 99px;
+    background: #223451;
+    color: #c3ddff;
+    font-size: 11px;
+}
+
+/* ==========================================================================
+   05. Hauptbereich, Dateiimport und Fortschritt
+   ========================================================================== */
+
+/* min-width:0 verhindert, dass breite Inhalte die Grid-Spalte unnötig aufziehen. */
+main {
+    padding: 18px;
+    min-width: 0;
+}
+
+.import {
+    border: 1px dashed #3d5d86;
+    border-radius: 13px;
+    background: linear-gradient(180deg,rgba(24,47,80,.38),rgba(17,27,44,.6));
+    padding: 16px;
+    margin-bottom: 16px;
+}
+
+/* Optischer Zustand für Drag-and-drop; die Klasse drag muss anderweitig gesetzt werden. */
+.import.drag {
+    border-color: var(--accent2);
+}
+
+.import-row {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    flex-wrap: wrap;
+}
+
+.import-status {
+    font-size: 12px;
+    color: var(--muted);
+    margin-top: 9px;
+}
+
+.file-list {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    margin-top: 8px;
+}
+
+/* Kleine, abgerundete Dateimarkierung; ok, bad und warn ergänzen später den Status. */
+.file-pill {
+    font-size: 11px;
+    padding: 4px 7px;
+    border-radius: 99px;
+    border: 1px solid var(--border);
+    background: #132039;
+    color: #c9d9f0;
+}
+
+/* Fortschrittsanzeige ist zunächst unsichtbar und muss bei Bedarf eingeblendet werden. */
+.progress-wrap {
+    margin-top: 12px;
+    display: none;
+}
+
+.progress-head {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    font-size: 12px;
+    margin-bottom: 6px;
+}
+
+.progress {
+    height: 9px;
+    background: #1b2a42;
+    border-radius: 99px;
+    overflow: hidden;
+}
+
+/* Der innere Balken startet bei 0 %. Seine Breite muss zur Laufzeit aktualisiert werden. */
+.progress span {
+    display: block;
+    height: 100%;
+    width: 0;
+    background: linear-gradient(90deg,#2563eb,#22d3ee);
+}
+
+/* Lange einzeilige Texte abschneiden und mit Auslassungspunkten anzeigen. */
+.progress-sub {
+    font-size: 11px;
+    color: var(--muted);
+    margin-top: 6px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* ==========================================================================
+   06. Kennzahlenkarten
+   ========================================================================== */
+
+/* Sechs Kennzahlenspalten, jeweils mindestens 130 px breit. Media Queries reduzieren die Anzahl. */
+.cards {
+    display: grid;
+    grid-template-columns: repeat(6,minmax(130px,1fr));
+    gap: 11px;
+    margin-bottom: 15px;
+}
+
+.card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 11px;
+    padding: 13px;
+    box-shadow: var(--shadow);
+}
+
+.card .label {
+    font-size: 11px;
+    color: var(--muted);
+}
+
+.card .value {
+    font-size: 24px;
+    font-weight: 750;
+    margin-top: 6px;
+}
+
+/* Zusatztext innerhalb einer Karte. Dieser Selektor ist spezifischer als die spätere Klasse .sub. */
+.card .sub {
+    font-size: 10px;
+    color: var(--muted);
+    margin-top: 4px;
+}
+
+/* ==========================================================================
+   07. Inhaltsboxen und Filterfelder
+   ========================================================================== */
+
+.panel {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 11px;
+    box-shadow: var(--shadow);
+    margin-bottom: 15px;
+}
+
+.panel-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 12px 14px;
+    border-bottom: 1px solid var(--border);
+}
+
+.panel-head h2 {
+    margin: 0;
+    font-size: 14px;
+}
+
+.panel-body {
+    padding: 13px;
+}
+
+/* Sechs Filterspalten mit mindestens 120 px Breite je Feld. */
+.filters {
+    display: grid;
+    grid-template-columns: repeat(6,minmax(120px,1fr));
+    gap: 9px;
+}
+
+.field label {
+    display: block;
+    font-size: 10px;
+    color: var(--muted);
+    margin: 0 0 4px 2px;
+}
+
+.field input, .field select {
+    width: 100%;
+    background: #0d1728;
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 7px;
+    padding: 7px 8px;
+}
+
+/* Fokussierte Felder erhalten einen blauen Rahmen anstelle der Standardkontur. */
+.field input:focus, .field select:focus {
+    outline: none;
+    border-color: var(--accent);
+}
+
+/* ==========================================================================
+   08. Tabellen und Seitennavigation
+   ========================================================================== */
+
+/* Tabelle scrollt innerhalb des Containers; Höhe auf 65 % der Viewporthöhe begrenzen. */
+.table-wrap {
+    overflow: auto;
+    max-height: 65vh;
+}
+
+table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    font-size: 11px;
+}
+
+/* Tabellenüberschriften bleiben beim Scrollen im Tabellencontainer oben sichtbar. */
+th {
+    position: sticky;
+    top: 0;
+    z-index: 4;
+    text-align: left;
+    white-space: nowrap;
+    background: #19263b;
+    color: #d8e7fb;
+    padding: 8px;
+    border-bottom: 1px solid var(--border);
+}
+
+/* Zellen bleiben standardmäßig einzeilig. Für längere Inhalte gibt es td.wrap. */
+td {
+    padding: 7px 8px;
+    border-bottom: 1px solid #1d2c43;
+    white-space: nowrap;
+    vertical-align: top;
+}
+
+tr:hover td {
+    background: #142138;
+}
+
+/* Mehrzeilige Zellen erlauben; lange Wörter bei Bedarf umbrechen. */
+td.wrap {
+    white-space: normal;
+    min-width: 220px;
+    max-width: 500px;
+    word-break: break-word;
+}
+
+.pager {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 8px;
+    padding: 9px 13px;
+    border-top: 1px solid var(--border);
+}
+
+/* Automatischer rechter Abstand schiebt die übrigen Bedienelemente nach rechts. */
+.pager .info {
+    margin-right: auto;
+    color: var(--muted);
+    font-size: 11px;
+}
+
+.pager select {
+    background: #0d1728;
+    color: var(--text);
+    border: 1px solid var(--border);
+    padding: 5px;
+    border-radius: 6px;
+}
+
+/* ==========================================================================
+   09. Schweregrade und Statusmarkierungen
+   ========================================================================== */
+
+/* Gemeinsame Form aller Schweregradabzeichen; die sev-Varianten definieren die Farben. */
+.sev {
+    display: inline-block;
+    padding: 3px 6px;
+    border-radius: 5px;
+    font-size: 10px;
+    font-weight: 700;
+}
+
+.sev-critical {
+    background: rgba(255,77,109,.18);
+    color: #ff91a6;
+}
+
+.sev-high {
+    background: rgba(255,107,107,.15);
+    color: #ffaaaa;
+}
+
+.sev-medium {
+    background: rgba(245,196,81,.13);
+    color: #f8d36f;
+}
+
+.sev-low {
+    background: rgba(78,161,255,.12);
+    color: #9acbff;
+}
+
+.sev-info {
+    background: rgba(145,163,187,.12);
+    color: #ccd6e3;
+}
+
+.chip {
+    display: inline-block;
+    padding: 2px 6px;
+    border-radius: 5px;
+    background: #203450;
+    color: #c9e1ff;
+}
+
+/* Kombination der Klassen chip und ok: positive Statusmarkierung. */
+.chip.ok {
+    background: rgba(66,217,157,.12);
+    color: #7ce9bd;
+}
+
+.chip.bad {
+    background: rgba(255,107,107,.14);
+    color: #ff9f9f;
+}
+
+/* ==========================================================================
+   10. Detailansichten, Balken, Hinweise und Ladeanimation
+   ========================================================================== */
+
+/* Zwei Spalten im Verhältnis 1,2 zu 0,8; auf kleinen Bildschirmen nur eine Spalte. */
+.two-col {
+    display: grid;
+    grid-template-columns: 1.2fr .8fr;
+    gap: 13px;
+}
+
+/* Drei Spalten für Beschriftung, Balken und Zahlenwert. */
+.bar-row {
+    display: grid;
+    grid-template-columns: 170px 1fr 60px;
+    gap: 7px;
+    align-items: center;
+    margin: 7px 0;
+    font-size: 11px;
+}
+
+.bar {
+    height: 9px;
+    border-radius: 99px;
+    background: #1b2b44;
+    overflow: hidden;
+}
+
+/* Gefüllter Teil eines Balkens; der Prozentwert für width kommt aus zusätzlichem Code. */
+.bar span {
+    display: block;
+    height: 100%;
+    border-radius: 99px;
+    background: linear-gradient(90deg,#2563eb,#22d3ee);
+}
+
+/* Zwei Spalten für Schlüssel und Werte. Die Elemente müssen passend angeordnet sein. */
+.kv {
+    display: grid;
+    grid-template-columns: 180px 1fr;
+    gap: 7px 10px;
+    font-size: 11px;
+}
+
+/* Jedes div mit ungerader Position unter seinen Geschwistern erhält die gedämpfte Textfarbe. */
+.kv div:nth-child(odd) {
+    color: var(--muted);
+}
+
+.notice {
+    padding: 9px 11px;
+    border: 1px solid #35527b;
+    background: #13243d;
+    border-radius: 8px;
+    font-size: 11px;
+    color: #c9dfff;
+    margin-bottom: 12px;
+}
+
+.empty {
+    text-align: center;
+    padding: 35px 15px;
+    color: var(--muted);
+}
+
+/* Inaktive Registerinhalte ausblenden. */
+.tab {
+    display: none;
+}
+
+/* Registerinhalt anzeigen, wenn beide Klassen tab und active gesetzt sind. */
+.tab.active {
+    display: block;
+}
+
+/* Pulsierender Punkt als Ladeindikator; die Animation wiederholt sich jede Sekunde. */
+.busy-dot {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--accent2);
+    animation: pulse 1s infinite;
+}
+
+/* Deckkraft wechselt zwischen 35 % und 100 %; Größe und Position bleiben gleich. */
+@keyframes pulse {
+    0%,100% {
+        opacity: .35;
+    }
+
+    50% {
+        opacity: 1;
+    }
+
+}
+
+/* ==========================================================================
+   11. Anpassung an kleinere Bildschirme und Druck
+   ========================================================================== */
+
+/* Ab einer Viewportbreite von höchstens 1250 px: Karten und Filter auf drei Spalten reduzieren. */
+@media(max-width:1250px) {
+    /* Sechs Kennzahlenspalten, jeweils mindestens 130 px breit. Media Queries reduzieren die Anzahl. */
+    .cards {
+        grid-template-columns: repeat(3,1fr);
+    }
+
+    /* Sechs Filterspalten mit mindestens 120 px Breite je Feld. */
+    .filters {
+        grid-template-columns: repeat(3,1fr);
+    }
+
+}
+
+/* Bei höchstens 850 px wird die Navigation horizontal und das Inhaltslayout kompakter. */
+@media(max-width:850px) {
+    /* 240 px breite Seitenleiste und flexibler Hauptbereich. minmax(0,1fr) erlaubt das Schrumpfen. */
+    /* Die abgezogenen 71 px sind eine feste Annahme zur Höhe der Kopfzeile. */
+    .layout {
+        grid-template-columns: 1fr;
+    }
+
+    aside {
+        display: flex;
+        gap: 4px;
+        overflow: auto;
+        border-right: 0;
+        border-bottom: 1px solid var(--border);
+        padding: 7px;
+    }
+
+    .aside-title {
+        display: none;
+    }
+
+    .nav {
+        min-width: 135px;
+    }
+
+    /* Sechs Kennzahlenspalten, jeweils mindestens 130 px breit. Media Queries reduzieren die Anzahl. */
+    .cards {
+        grid-template-columns: repeat(2,1fr);
+    }
+
+    /* Zwei Spalten im Verhältnis 1,2 zu 0,8; auf kleinen Bildschirmen nur eine Spalte. */
+    .two-col {
+        grid-template-columns: 1fr;
+    }
+
+    /* Sechs Filterspalten mit mindestens 120 px Breite je Feld. */
+    .filters {
+        grid-template-columns: repeat(2,1fr);
+    }
+
+}
+
+/* Nur beim Drucken: Bedienoberfläche ausblenden, Scrollbegrenzung und Schatten entfernen. */
+/* Die dunklen Farben bleiben bestehen; eine DIN-A4-Seitengröße ist hier nicht festgelegt. */
+@media print {
+    /* Diese Elemente werden in der Druckansicht vollständig ausgeblendet. */
+    header, aside, .import, .filters, .pager, .noprint {
+        display: none!important;
+    }
+
+    /* 240 px breite Seitenleiste und flexibler Hauptbereich. minmax(0,1fr) erlaubt das Schrumpfen. */
+    /* Die abgezogenen 71 px sind eine feste Annahme zur Höhe der Kopfzeile. */
+    .layout {
+        display: block;
+    }
+
+    /* min-width:0 verhindert, dass breite Inhalte die Grid-Spalte unnötig aufziehen. */
+    main {
+        padding: 0;
+    }
+
+    .panel, .card {
+        box-shadow: none;
+    }
+
+    /* Tabelle scrollt innerhalb des Containers; Höhe auf 65 % der Viewporthöhe begrenzen. */
+    .table-wrap {
+        max-height: none;
+        overflow: visible;
+    }
+
+    /* Tabellenüberschriften bleiben beim Scrollen im Tabellencontainer oben sichtbar. */
+    th {
+        position: static;
+    }
+
+}
+
+/* ==========================================================================
+   12. Logo und zusätzliche Dateistatus
+   ========================================================================== */
+
+.brand-logo {
+    display: grid;
+    place-items: center;
+}
+
+/* Logo-Bild auf höchstens 42 px Höhe begrenzen; display:block vermeidet die Inline-Grundlinienlücke. */
+.brand-logo img {
+    max-height: 42px;
+    display: block;
+}
+
+.nav-info {
+    font-size: 10px;
+    color: var(--muted);
+    padding: 10px 8px;
+    line-height: 1.5;
+}
+
+.file-pill.ok {
+    border-color: #2e7d5a;
+    color: #7ce9bd;
+}
+
+.file-pill.bad {
+    border-color: #8f2b3b;
+    color: #ff9f9f;
+}
+
+.file-pill.warn {
+    border-color: #7a6220;
+    color: #f8d36f;
+}
+
+.chip.warn {
+    background: rgba(245,196,81,.13);
+    color: #f8d36f;
+}
+
+/* Schmales Eingabefeld, beispielsweise für eine Seitenzahl; die Logik wird nicht durch CSS festgelegt. */
+.pgin {
+    width: 70px;
+    background: #0d1728;
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 4px;
+}
+
+/* ==========================================================================
+   13. Werkzeugleiste, Notizen und kompakte Eingabefelder
+   ========================================================================== */
+
+.toolbar {
+    display: flex;
+    gap: 9px;
+    flex-wrap: wrap;
+    align-items: center;
+    padding: 12px 14px;
+    border-bottom: 1px solid var(--border);
+}
+
+.toolbar input[type=text], .toolbar input[type=number] {
+    background: #0d1728;
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 7px;
+    padding: 7px 8px;
+}
+
+.notes {
+    font-size: 11px;
+    color: #c9dfff;
+    padding: 8px 14px;
+    border-bottom: 1px solid var(--border);
+}
+
+/* Kompaktes Eingabefeld. Die fachliche Bedeutung des Klassennamens ergibt sich aus dem HTML. */
+.rv {
+    background: #0d1728;
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    padding: 3px;
+    font-size: 10px;
+}
+
+/* Ähnliches Eingabefeld mit fester Breite und Abstand links. */
+.rvc {
+    background: #0d1728;
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    padding: 3px;
+    font-size: 10px;
+    width: 140px;
+    margin-left: 3px;
+}
+
+/* ==========================================================================
+   14. Zusätzlicher Ansichtsmodus, Abzeichen und Fließtext
+   ========================================================================== */
+
+/* Nur wenn body die Klasse pseudo trägt, erhält die Kopfzeile eine türkise Unterkante. */
+/* Was der Modus fachlich bedeutet, lässt sich aus diesem CSS allein nicht bestimmen. */
+body.pseudo header {
+    border-bottom: 2px solid #22d3ee;
+}
+
+.badge {
+    font-size: 10px;
+    padding: 2px 6px;
+    border-radius: 99px;
+    background: #223451;
+    color: #c3ddff;
+}
+
+/* Beschriftung und zugehöriges Bedienelement nebeneinander ausrichten. */
+label.tg {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 11px;
+    color: var(--muted);
+    cursor: pointer;
+}
+
+/* Etwas größere Schrift und erhöhter Zeilenabstand für längere Erklärungstexte. */
+.prose {
+    font-size: 12px;
+    line-height: 1.55;
+    color: #d3deee;
+}
+
+.prose h3 {
+    font-size: 13px;
+    margin: 12px 0 4px;
+}
+
+.prose ul {
+    margin: 4px 0 8px 18px;
+    padding: 0;
+}
+
+/* ==========================================================================
+   15. Erneute Logo-Regeln aus dem Original
+   ========================================================================== */
+
+/* Diese beiden Regeln kommen bereits weiter oben identisch vor. */
+/* Die Wiederholung bleibt bewusst erhalten, damit die Originalreihenfolge unverändert ist. */
+
+.brand-logo {
+    display: grid;
+    place-items: center;
+}
+
+/* Logo-Bild auf höchstens 42 px Höhe begrenzen; display:block vermeidet die Inline-Grundlinienlücke. */
+.brand-logo img {
+    max-height: 42px;
+    display: block;
+}
+
+/* ==========================================================================
+   16. Kompakte Markierungen, Tags und Hilfsklassen
+   ========================================================================== */
+
+/* Kompakte Textmarkierung; .p ist ein Klassenname und kein Selektor für das HTML-Element p. */
+.p {
+    display: inline-block;
+    padding: 1px 6px;
+    border-radius: 4px;
+    font-size: 10px;
+    font-weight: 600;
+    margin: 1px 2px 1px 0;
+    white-space: nowrap;
+}
+
+.p-crit {
+    background: rgba(255,77,109,.18);
+    color: #ff91a6;
+}
+
+.p-high {
+    background: rgba(245,196,81,.15);
+    color: #f8d36f;
+}
+
+.p-read {
+    background: rgba(66,217,157,.12);
+    color: #7ce9bd;
+}
+
+.p-low {
+    background: #203450;
+    color: #c9e1ff;
+}
+
+/* Markierung mit beiden Klassen p und inh: transparent mit gestricheltem Rahmen. */
+/* currentColor verwendet die Textfarbe des Elements für den Rahmen. */
+.p.inh {
+    background: transparent;
+    border: 1px dashed currentColor;
+}
+
+.tag {
+    display: inline-block;
+    padding: 1px 6px;
+    border-radius: 5px;
+    font-size: 10px;
+    background: #203450;
+    color: #c9e1ff;
+}
+
+.tag.bad {
+    background: rgba(255,107,107,.14);
+    color: #ff9f9f;
+}
+
+.tag.warn {
+    background: rgba(245,196,81,.13);
+    color: #f8d36f;
+}
+
+.tag.ok {
+    background: rgba(66,217,157,.12);
+    color: #7ce9bd;
+}
+
+/* Beide Klassenkombinationen verwenden denselben violetten Farbstil. */
+.tag.sys, .tag.adm {
+    background: rgba(167,139,250,.15);
+    color: #c4b5fd;
+}
+
+/* Allgemeine Hilfsklasse für Zusatztext. Spezifischere Regeln können sie überschreiben. */
+.sub {
+    font-size: 10px;
+    color: var(--muted);
+    margin-top: 2px;
+}
+
+/* Schrift mit gleich breiten Zeichen für technische Angaben; lange Zeichenfolgen dürfen umbrechen. */
+.mono {
+    font-family: Consolas,monospace;
+    font-size: 10px;
+    word-break: break-all;
+}
+
+/* Zusätzlicher Abstand oberhalb von tg-Elementen innerhalb eines field-Containers. */
+.field .tg {
+    margin-top: 4px;
+}
+</style>
+</head>
+<body>
+<header>
+  <div class="brand"><div class="brand-logo"><img src="https://cosplaygif.de/assets/logo/logo-text-black-cosplayGIF.png" alt="Logo" referrerpolicy="no-referrer"></div><div><h1>Exchange Permission Audit</h1><small>Postfachberechtigungen · Nachweis-WebGUI v1.0 · Verarbeitung lokal im Browser</small></div></div>
+  <div class="actions"><label class="tg" title="Benutzerkennungen, persönliche Postfächer und Mitglieder in Anzeige, Exporten und Reports durch Pseudonyme (P-xxxx) ersetzen"><input type="checkbox" id="pseudoToggle"> Pseudonymisieren</label><button id="btnExport" disabled>Ansicht als CSV</button><button class="primary" id="btnOverview" disabled>Berechtigungsübersicht (HTML)</button><button class="primary" id="btnNachweis" disabled>Nachweis-Report (HTML)</button><button onclick="window.print()">Drucken / PDF</button><button id="btnReset" class="danger" disabled>Daten löschen</button></div>
+</header>
+<div class="layout">
+<aside>
+  <div class="aside-title">Auswertung</div>
+  <button class="nav active" data-tab="dashboard">Dashboard</button>
+  <button class="nav" data-tab="findings">Prüfhinweise <span class="count" id="cFindings">0</span></button>
+  <button class="nav" data-tab="mailboxes">Postfächer → Berechtigte <span class="count" id="cMailboxes">0</span></button>
+  <button class="nav" data-tab="persons">Personen → Postfächer <span class="count" id="cPersons">0</span></button>
+  <button class="nav" data-tab="groups">Gruppen → Mitglieder <span class="count" id="cGroups">0</span></button>
+  <button class="nav" data-tab="delta">Vergleich (Vorlauf) <span class="count" id="cDelta">–</span></button>
+  <div class="aside-title">Rohdaten</div>
+  <button class="nav" data-tab="raw">CSV-Rohdaten <span class="count" id="cRaw">0</span></button>
+  <div class="aside-title">Nachweis</div>
+  <button class="nav" data-tab="nachweis">Review &amp; Reports <span class="count" id="cReview">0</span></button>
+  <button class="nav" data-tab="datenschutz">Datenschutz</button>
+  <div class="nav-info">Die CSV bleibt auf dem Datenträger. Im Browser liegen nur ein Zeilenindex und eine kompakte, deduplizierte Auswertung. Beim Schließen oder Neuladen ist alles gelöscht – Review vorher speichern.</div>
+</aside>
+<main>
+<section class="import" id="dropZone">
+  <div class="import-row"><strong>Exchange-Export laden</strong><input type="file" id="fileInput" accept=".csv,.txt,text/csv" hidden><button class="primary" id="btnChoose">CSV auswählen</button><span class="small">oder per Drag &amp; Drop · Komma, Semikolon oder Tab · „#TYPE“-Zeile von Export-Csv wird übersprungen</span></div>
+  <div class="import-status">Erwartete Spalten: <code>Mailbox, PrimarySmtpAddress, MailboxType, Permission, AD Group or User, FirstName, LastName, GroupMembers, Inherited</code> (Groß-/Kleinschreibung egal; Pflicht sind Mailbox oder PrimarySmtpAddress, Permission und AD Group or User).</div>
+  <div class="import-status" id="importStatus"></div>
+  <div class="file-list" id="fileList"></div>
+  <div class="progress-wrap" id="progressWrap"><div class="progress-head"><span id="progressTitle">Import …</span><span id="progressPct">0 %</span></div><div class="progress"><span id="progressBar"></span></div><div class="progress-sub" id="progressSub"></div></div>
+</section>
+
+<section class="tab active" id="dashboard">
+<div class="cards">
+  <div class="card"><div class="label">Postfächer</div><div class="value" id="kMb">0</div><div class="sub" id="kMbSub">–</div></div>
+  <div class="card"><div class="label">Berechtigungszeilen</div><div class="value" id="kRows">0</div><div class="sub">aus dem Export</div></div>
+  <div class="card"><div class="label">Berechtigte Personen</div><div class="value" id="kPers">0</div><div class="sub">Gruppen aufgelöst</div></div>
+  <div class="card"><div class="label">Vollzugriffe</div><div class="value" id="kFa">0</div><div class="sub" id="kFaSub">–</div></div>
+  <div class="card"><div class="label">Critical</div><div class="value" id="kCrit" style="color:#ff91a6">0</div><div class="sub">breite Identitäten</div></div>
+  <div class="card"><div class="label">High</div><div class="value" id="kHigh" style="color:#ffaaaa">0</div><div class="sub">Need-to-know / Identität</div></div>
+</div>
+<div class="two-col">
+  <div class="panel"><div class="panel-head"><h2>Rechte (ohne System und Eigentümer)</h2></div><div class="panel-body" id="permBars"><div class="empty">Noch keine Daten geladen.</div></div></div>
+  <div class="panel"><div class="panel-head"><h2>Datei und Formaterkennung</h2></div><div class="panel-body"><div class="kv" id="fmtBox"></div></div></div>
+</div>
+<div class="two-col">
+  <div class="panel"><div class="panel-head"><h2>Postfächer mit den meisten Vollzugriff-Berechtigten</h2></div><div class="panel-body" id="topMbBars"><div class="empty">–</div></div></div>
+  <div class="panel"><div class="panel-head"><h2>Personen mit Vollzugriff auf die meisten fremden Postfächer</h2></div><div class="panel-body" id="topPBars"><div class="empty">–</div></div></div>
+</div>
+<div class="two-col">
+  <div class="panel"><div class="panel-head"><h2>Prüfhinweise nach Kategorie</h2></div><div class="panel-body" id="catBars"><div class="empty">–</div></div></div>
+  <div class="panel"><div class="panel-head"><h2>Postfachtypen</h2></div><div class="panel-body" id="typeBars"><div class="empty">–</div></div></div>
+</div>
+<div class="panel"><div class="panel-head"><h2>Einstellungen der Auswertung</h2></div><div class="toolbar">
+  <label class="small">Trennzeichen Gruppenmitglieder <select id="setSep" class="pgin" style="width:auto"><option value="auto">automatisch</option><option value=";">;</option><option value=",">,</option><option value="|">|</option><option value="&#10;">Zeilenumbruch</option><option value="none">keins (ein Mitglied je Zeile)</option></select></label>
+  <label class="small">große Gruppe ab <input type="number" id="setBig" value="25" min="2" style="width:70px"></label>
+  <label class="small">viele Berechtigte ab <input type="number" id="setMany" value="25" min="2" style="width:70px"></label>
+  <label class="tg"><input type="checkbox" id="setSys"> System- und geerbte Admin-Einträge als wirksamen Zugriff werten</label>
+  <button id="btnSettings">Übernehmen &amp; neu berechnen</button></div></div>
+</section>
+
+<section class="tab" id="findings"><div class="notice">Heuristische Prüfhinweise für Need-to-know und Least Privilege. Eigentümer (SELF bzw. namensgleiches Konto) und Exchange-Systemkonten sind ausgenommen. Jede Zeile kann bewertet werden; Review unter „Review &amp; Reports“ speichern.</div><div class="panel"><div class="panel-head"><h2>Prüfhinweise</h2><span class="small" id="findingsInfo"></span></div><div class="panel-body"><div class="filters"><div class="field"><label>Priorität</label><select id="fSev"><option value="">Alle</option><option>Critical</option><option>High</option><option>Medium</option><option>Low</option></select></div><div class="field"><label>Kategorie</label><select id="fCat"><option value="">Alle</option></select></div><div class="field"><label>Freitext</label><input id="fSearch" placeholder="Postfach, Berechtigter …"></div></div></div><div class="table-wrap"><table id="findingsTable"></table></div><div class="pager" id="findingsPager"></div></div></section>
+
+<section class="tab" id="mailboxes"><div class="panel"><div class="panel-head"><h2>Postfächer → Berechtigte</h2><span class="small" id="mailboxesInfo"></span></div><div class="panel-body"><div class="filters">
+  <div class="field"><label>Freitext</label><input id="mSearch" placeholder="Postfach, SMTP, Berechtigter …"></div>
+  <div class="field"><label>Postfachtyp</label><select id="mType"><option value="">Alle</option></select></div>
+  <div class="field"><label>Recht</label><select id="mPerm"><option value="">Alle</option><option value="1">Vollzugriff</option><option value="2">Senden als</option><option value="4">Senden im Auftrag</option><option value="24">Berechtigungen/Besitzer ändern</option><option value="32">Löschen</option><option value="768">Ordnerrechte</option></select></div>
+  <div class="field"><label>Klasse</label><select id="mCls"><option value="">Alle</option></select></div>
+  <div class="field"><label>Herkunft</label><select id="mInh"><option value="">explizit + geerbt</option><option value="e">nur explizit</option><option value="i">nur geerbt</option></select></div>
+  <div class="field"><label>Ausblenden</label><label class="tg"><input type="checkbox" id="mHideSys" checked> System/SELF</label><label class="tg"><input type="checkbox" id="mHideOwn"> Eigentümer</label></div>
+</div></div><div class="table-wrap"><table id="mailboxesTable"></table></div><div class="pager" id="mailboxesPager"></div></div></section>
+
+<section class="tab" id="persons"><div class="notice">Wirksamer Zugriff je Person: direkte Berechtigungen und Gruppenmitgliedschaften (auch verschachtelt) zusammengeführt. Mitglieder aus GroupMembers werden per Name/Konto mit den Benutzerkonten abgeglichen.</div><div class="panel"><div class="panel-head"><h2>Personen → Postfächer</h2><span class="small" id="personsInfo"></span></div><div class="panel-body"><div class="filters">
+  <div class="field"><label>Freitext</label><input id="pSearch" placeholder="Person, Postfach, Gruppe …"></div>
+  <div class="field"><label>Postfachtyp</label><select id="pType"><option value="">Alle</option></select></div>
+  <div class="field"><label>Recht</label><select id="pPerm"><option value="">Alle</option><option value="1">Vollzugriff</option><option value="2">Senden als</option><option value="4">Senden im Auftrag</option><option value="24">Berechtigungen/Besitzer ändern</option><option value="768">Ordnerrechte</option></select></div>
+  <div class="field"><label>Ausblenden</label><label class="tg"><input type="checkbox" id="pHideOwn" checked> eigenes Postfach</label></div>
+</div></div><div class="table-wrap"><table id="personsTable"></table></div><div class="pager" id="personsPager"></div></div></section>
+
+<section class="tab" id="groups"><div class="panel"><div class="panel-head"><h2>Gruppen → Mitglieder und Postfächer</h2><span class="small" id="groupsInfo"></span></div><div class="panel-body"><div class="filters"><div class="field"><label>Freitext</label><input id="gSearch" placeholder="Gruppe oder Mitglied …"></div></div></div><div class="table-wrap"><table id="groupsTable"></table></div><div class="pager" id="groupsPager"></div></div></section>
+
+<section class="tab" id="delta"><div class="notice">Vergleich mit dem Export eines früheren Audits: neue, entfernte und geänderte Berechtigungen sowie Änderungen der Gruppenmitgliedschaften (ohne Exchange-Systemkonten und SELF).</div><div class="panel"><div class="panel-head"><h2>Vergleich mit Vorlauf</h2><span class="small" id="deltaInfo"></span></div><div class="toolbar"><input type="file" id="compareInput" accept=".csv,.txt" hidden><button class="primary" id="btnCompare" disabled>Export des Vorlaufs laden</button><span class="small" id="compareStatus"></span></div><div class="panel-body"><div class="filters"><div class="field"><label>Änderung</label><select id="dKind"><option value="">Alle</option><option>Neu</option><option>Entfernt</option><option>Geändert</option><option>Mitglied hinzugefügt</option><option>Mitglied entfernt</option></select></div><div class="field"><label>Freitext</label><input id="dSearch"></div></div></div><div class="table-wrap"><table id="deltaTable"></table></div><div class="pager" id="deltaPager"></div></div></section>
+
+<section class="tab" id="raw"><div class="panel"><div class="panel-head"><h2>CSV-Rohdaten</h2><span class="small" id="rawInfo"></span></div><div class="panel-body"><div class="filters"><div class="field"><label>Freitext (Datei-Scan)</label><input id="rSearch" placeholder="beliebiger Wert …"></div></div></div><div class="table-wrap"><table id="rawTable"></table></div><div class="pager" id="rawPager"></div></div></section>
+
+<section class="tab" id="nachweis">
+<div class="panel"><div class="panel-head"><h2>Review-Rahmen</h2></div><div class="toolbar"><input type="text" id="rvReviewer" placeholder="Reviewer (Name)" style="min-width:200px"><input type="text" id="rvResponsible" placeholder="Verantwortlicher (Organisation / Rolle)" style="min-width:260px"><input type="text" id="rvPurpose" placeholder="Zweck / Rechtsgrundlage (optional)" style="flex:1;min-width:240px"></div>
+<div class="toolbar"><input type="text" id="expHash" placeholder="Erwarteter SHA-256 der CSV (optional, z. B. aus Get-FileHash)" style="flex:1;min-width:320px"><input type="file" id="rvInput" accept=".json" hidden><button id="btnRvSave">Review speichern (JSON)</button><button onclick="document.getElementById('rvInput').click()">Review laden</button></div>
+<div class="notes">Bewertungen liegen nur im Arbeitsspeicher. Review speichern und beim nächsten Audit wieder laden – die Schlüssel (Hinweisart + Postfach + Berechtigter) sind laufübergreifend stabil.</div></div>
+<div class="panel"><div class="panel-head"><h2>Report-Optionen</h2></div><div class="toolbar"><label class="tg"><input type="checkbox" id="ovPersons" checked> Abschnitt Personen → Postfächer</label><label class="tg"><input type="checkbox" id="ovSys"> System-/Admin-Standardeinträge in der Übersicht zeigen</label><label class="small">max. Zeilen je Gruppe/Person <input type="number" id="ovLimit" value="500" min="50" style="width:80px"></label></div><div class="notes">„Berechtigungsübersicht“: Postfächer → Berechtigte, Gruppen → Mitglieder, Personen → Postfächer. „Nachweis-Report“: Rahmen, Kennzahlen, Prüfhinweise mit Review-Status, Vergleich mit Vorlauf, Unterschriften. Beide Dateien sind eigenständig, durchsuchbar und druckbar.</div></div>
+<div class="panel"><div class="panel-head"><h2>Aktueller Stand</h2></div><div class="panel-body"><div class="kv" id="nwFile"></div></div></div>
+</section>
+
+<section class="tab" id="datenschutz"><div class="panel"><div class="panel-head"><h2>Datenschutz (DSGVO) – Hinweise für Betreiber und Reviewer</h2></div><div class="panel-body prose">
+<h3>Was verarbeitet wird</h3><p>Der Export enthält personenbezogene Beschäftigtendaten: Postfachnamen und E-Mail-Adressen, Konten, Vor- und Nachnamen, Gruppenmitgliedschaften und Zugriffsrechte auf Postfächer anderer Personen. Rechtsgrundlage ist in der Regel Art. 6 Abs. 1 lit. c/f i. V. m. Art. 32 DSGVO (Sicherheit der Verarbeitung) bzw. § 26 BDSG; Zweck ist ausschließlich die Berechtigungsprüfung.</p>
+<h3>Technische Maßnahmen dieser WebGUI</h3><ul><li><b>Keine Übertragung der Audit-Daten:</b> Content-Security-Policy <code>connect-src 'none'</code>, keine externen Skripte oder Schriften, kein Tracking. Einzige externe Ressource ist das Logo im Kopf (Bild-Request ohne Referrer und ohne Audit-Daten).</li><li><b>Keine Persistenz:</b> kein localStorage, kein IndexedDB, keine Cookies; „Daten löschen“ oder Schließen des Tabs entfernt alles.</li><li><b>Datensparsamkeit:</b> Die CSV wird nicht vollständig in den Arbeitsspeicher geladen; Rohdaten werden bei Bedarf aus der Datei gelesen.</li><li><b>Pseudonymisierung:</b> ersetzt Benutzerkonten, Namen, Gruppenmitglieder und persönliche Postfächer in Anzeige, CSV-Exporten und Reports durch stabile Pseudonyme. Gruppen und Funktionspostfächer bleiben lesbar. Für Berichte an Management, externe Auditoren oder Betriebsrat empfohlen.</li><li><b>Integrität:</b> SHA-256 der CSV wird im Browser berechnet und im Report dokumentiert; optionaler Abgleich mit einem erwarteten Hash.</li></ul>
+<h3>Organisatorische Pflichten</h3><ul><li>Verarbeitung „Berechtigungsaudit Exchange“ ins Verzeichnis nach Art. 30 DSGVO aufnehmen.</li><li>Export und Reports mit Klarnamen zugriffsbeschränkt ablegen, Löschfrist festlegen.</li><li>Keine Einsicht in Postfachinhalte: Das Audit bewertet ausschließlich Berechtigungen.</li><li>Betriebsrat einbeziehen, soweit Auswertungen Rückschlüsse auf Verhalten oder Leistung zulassen.</li></ul>
+</div></div></section>
+</main>
+</div>
+
+<script id="workerCode" type="javascript/worker">
+"use strict";
+const CHUNK=4*1024*1024, AE=64, MAX_SPAN=8*1024*1024;
+function low(v){return String(v??"").trim().toLowerCase()} function boolVal(v){v=low(v);if(["true","wahr","yes","ja","1"].includes(v))return true;if(["false","falsch","no","nein","0"].includes(v))return false;return null}
+function colMap(h){const m={};h.forEach((x,i)=>m[x]=i);return m} function get(r,m,k){const i=m[k];return i===undefined?"":(r[i]??"")}
+function hkey(s){let h1=0x811c9dc5,h2=0x9e3779b9;for(let i=0;i<s.length;i++){const c=s.charCodeAt(i);h1=Math.imul(h1^c,16777619);h2=Math.imul(h2+c,2654435761)^(h2>>>13)}return (h1>>>0)*2097152+((h2>>>0)&2097151)}
+/* ---------- typisierte, wachsende Arrays ---------- */
+class GrowArr{constructor(T,n=4096){this.T=T;this.a=new T(n);this.n=0}push(v){if(this.n===this.a.length){const b=new this.T(this.a.length*2);b.set(this.a);this.a=b}this.a[this.n++]=v}get(i){return this.a[i]}slice(s,e){return Array.from(this.a.subarray(s,Math.min(e,this.n)))}view(){return this.a.subarray(0,this.n)}get bytes(){return this.a.byteLength}}
+
+/* ---------- SHA-256 (inkrementell, für Manifest-Prüfung) ---------- */
+const K256=new Uint32Array([0x428a2f98,0x71374491,0xb5c0fbcf,0xe9b5dba5,0x3956c25b,0x59f111f1,0x923f82a4,0xab1c5ed5,0xd807aa98,0x12835b01,0x243185be,0x550c7dc3,0x72be5d74,0x80deb1fe,0x9bdc06a7,0xc19bf174,0xe49b69c1,0xefbe4786,0x0fc19dc6,0x240ca1cc,0x2de92c6f,0x4a7484aa,0x5cb0a9dc,0x76f988da,0x983e5152,0xa831c66d,0xb00327c8,0xbf597fc7,0xc6e00bf3,0xd5a79147,0x06ca6351,0x14292967,0x27b70a85,0x2e1b2138,0x4d2c6dfc,0x53380d13,0x650a7354,0x766a0abb,0x81c2c92e,0x92722c85,0xa2bfe8a1,0xa81a664b,0xc24b8b70,0xc76c51a3,0xd192e819,0xd6990624,0xf40e3585,0x106aa070,0x19a4c116,0x1e376c08,0x2748774c,0x34b0bcb5,0x391c0cb3,0x4ed8aa4a,0x5b9cca4f,0x682e6ff3,0x748f82ee,0x78a5636f,0x84c87814,0x8cc70208,0x90befffa,0xa4506ceb,0xbef9a3f7,0xc67178f2]);
+class Sha256{constructor(){this.h=new Uint32Array([0x6a09e667,0xbb67ae85,0x3c6ef372,0xa54ff53a,0x510e527f,0x9b05688c,0x1f83d9ab,0x5be0cd19]);this.buf=new Uint8Array(64);this.bl=0;this.len=0;this.w=new Uint32Array(64)}
+  block(b,o){const w=this.w,h=this.h;for(let i=0;i<16;i++,o+=4)w[i]=(b[o]<<24)|(b[o+1]<<16)|(b[o+2]<<8)|b[o+3];for(let i=16;i<64;i++){const x=w[i-15],y=w[i-2];w[i]=(w[i-16]+(((x>>>7)|(x<<25))^((x>>>18)|(x<<14))^(x>>>3))+w[i-7]+(((y>>>17)|(y<<15))^((y>>>19)|(y<<13))^(y>>>10)))|0}
+    let a=h[0],b2=h[1],c=h[2],d=h[3],e=h[4],f=h[5],g=h[6],hh=h[7];
+    for(let i=0;i<64;i++){const t1=(hh+(((e>>>6)|(e<<26))^((e>>>11)|(e<<21))^((e>>>25)|(e<<7)))+((e&f)^(~e&g))+K256[i]+w[i])|0,t2=((((a>>>2)|(a<<30))^((a>>>13)|(a<<19))^((a>>>22)|(a<<10)))+((a&b2)^(a&c)^(b2&c)))|0;hh=g;g=f;f=e;e=(d+t1)|0;d=c;c=b2;b2=a;a=(t1+t2)|0}
+    h[0]=(h[0]+a)|0;h[1]=(h[1]+b2)|0;h[2]=(h[2]+c)|0;h[3]=(h[3]+d)|0;h[4]=(h[4]+e)|0;h[5]=(h[5]+f)|0;h[6]=(h[6]+g)|0;h[7]=(h[7]+hh)|0}
+  update(u8){this.len+=u8.length;let i=0;if(this.bl){const n=Math.min(64-this.bl,u8.length);this.buf.set(u8.subarray(0,n),this.bl);this.bl+=n;i=n;if(this.bl<64)return;this.block(this.buf,0);this.bl=0}for(;i+64<=u8.length;i+=64)this.block(u8,i);if(i<u8.length){this.buf.set(u8.subarray(i),0);this.bl=u8.length-i}}
+  hex(){const pad=new Uint8Array(((this.bl<56)?64:128));pad.set(this.buf.subarray(0,this.bl));pad[this.bl]=0x80;const bits=this.len*8;const hi=Math.floor(bits/4294967296),lo=bits>>>0;const L=pad.length;pad[L-8]=hi>>>24;pad[L-7]=hi>>>16;pad[L-6]=hi>>>8;pad[L-5]=hi;pad[L-4]=lo>>>24;pad[L-3]=lo>>>16;pad[L-2]=lo>>>8;pad[L-1]=lo;for(let o=0;o<L;o+=64)this.block(pad,o);return Array.from(this.h).map(x=>(x>>>0).toString(16).padStart(8,"0")).join("")}}
+
+/* ---------- CSV-Tokenizer (zählt UTF-8-Bytes für Offsets) ---------- */
+function makeTokenizer(delim,onRow,startByte){
+  const dc=delim.charCodeAt(0);let field="",row=[],quoted=false,pending=false,bytes=startByte,rowStart=startByte;
+  const emit=()=>{const s=rowStart;rowStart=bytes;const r=row;row=[];onRow(r,s,bytes)};
+  return{feed(text,more){const L=text.length;let fs=0;for(let i=0;i<L;i++){const c=text.charCodeAt(i);bytes+=c<0x80?1:c<0x800?2:(c>=0xD800&&c<0xE000)?2:3;
+      if(pending){if(c===34){field+='"';pending=false;fs=i+1;continue}quoted=false;pending=false}
+      if(quoted){if(c===34){field+=text.slice(fs,i);if(i+1<L){if(text.charCodeAt(i+1)===34){field+='"';i++;bytes+=1;fs=i+1}else{quoted=false;fs=i+1}}else{fs=i+1;if(more)pending=true;else quoted=false}}}
+      else{if(c===34){field+=text.slice(fs,i);quoted=true;fs=i+1}else if(c===dc){field+=text.slice(fs,i);row.push(field);field="";fs=i+1}else if(c===10){field+=text.slice(fs,i);if(field.length&&field.charCodeAt(field.length-1)===13)field=field.slice(0,-1);row.push(field);field="";fs=i+1;emit()}}}
+      if(fs<L)field+=text.slice(fs)},
+    end(){pending=false;quoted=false;if(field!==""||row.length){if(field.length&&field.charCodeAt(field.length-1)===13)field=field.slice(0,-1);row.push(field);field="";emit()}}};
+}
+const nonEmpty=r=>{for(let i=0;i<r.length;i++)if(r[i]!=="")return true;return false};
+function makeStream(file,start,end,delim,onRow,hash){
+  const fr=new FileReaderSync(),dec=new TextDecoder("utf-8",{ignoreBOM:true}),tok=makeTokenizer(delim,onRow,start);let off=start,done=false;
+  return{step(){if(done)return false;const e=Math.min(off+CHUNK,end),ab=fr.readAsArrayBuffer(file.slice(off,e)),more=e<end;if(hash)hash.update(new Uint8Array(ab));tok.feed(dec.decode(ab,{stream:more}),more);off=e;if(!more){const t=dec.decode();if(t)tok.feed(t,false);tok.end();done=true}return!done},get offset(){return off}};
+}
+function parseSlice(file,s,e,delim,onRow){const fr=new FileReaderSync(),text=new TextDecoder("utf-8",{ignoreBOM:true}).decode(fr.readAsArrayBuffer(file.slice(s,e))),tok=makeTokenizer(delim,onRow,s);tok.feed(text,false);tok.end()}
+
+/* ---------- Zeilen nachlesen ---------- */
+function blockEnd(d,b){return b+1<d.anchors.n?d.anchors.get(b+1):d.file.size}
+function readRange(d,from,to){to=Math.min(to,d.count);if(from>=to)return[];const b0=Math.floor(from/AE),b1=Math.floor((to-1)/AE),out=[];let idx=b0*AE;parseSlice(d.file,d.anchors.get(b0),blockEnd(d,b1),d.delim,r=>{if(!nonEmpty(r))return;if(idx>=from&&idx<to)out.push(r);idx++});return out}
+function readByIndices(d,idxs){const out=new Array(idxs.length);let p=0;while(p<idxs.length){const b0=Math.floor(idxs[p]/AE),s=d.anchors.get(b0);let bEnd=b0,q=p;while(q+1<idxs.length){const nb=Math.floor(idxs[q+1]/AE);if(nb>bEnd&&blockEnd(d,nb)-s>MAX_SPAN)break;bEnd=Math.max(bEnd,nb);q++}let idx=b0*AE,k=p;parseSlice(d.file,s,blockEnd(d,bEnd),d.delim,r=>{if(k>q||!nonEmpty(r))return;while(k<=q&&idxs[k]===idx)out[k++]=r;idx++});for(;k<=q;k++)out[k]=out[k]||[];p=q+1}return out}
+
+
+/* =============================================================================
+   Exchange-Postfachberechtigungen – Worker
+   Rohdaten bleiben auf dem Datenträger (Zeilenindex für die Rohdatenansicht).
+   Für die Auswertung wird ein kompaktes, dedupliziertes Modell aufgebaut:
+   Postfächer × Berechtigte (Bitmasken), Gruppen → Mitglieder, Personen.
+   ============================================================================= */
+const FA=1,SA=2,SOB=4,CP=8,CO=16,DEL=32,RP=64,EXT=128,FW=256,FR=512,OTH=1024,FAV=2048;
+const PERM_TXT=[[FA,"Vollzugriff"],[SA,"Senden als"],[CP,"Berechtigungen ändern"],[CO,"Besitzer ändern"],[SOB,"Senden im Auftrag"],[DEL,"Löschen"],[FW,"Ordner schreiben"],[FR,"Ordner lesen"],[FAV,"Ordner Verfügbarkeit"],[RP,"Berechtigungen lesen"],[EXT,"Externes Konto"],[OTH,"Sonstiges"]];
+function permTxt(b){return PERM_TXT.filter(x=>b&x[0]).map(x=>x[1]).join(", ")||"–"}
+function permBits(t){
+  const s=low(t).replace(/[{}"'\[\]]/g,"");let b=0;
+  for(const part of s.split(/[,;|+\/]/)){const x=part.replace(/\s+/g,"");if(!x||x==="none"||x==="keine")continue;
+    if(/fullaccess|vollzugriff|vollerzugriff/.test(x))b|=FA;
+    else if(/onbehalf|imauftrag|grantsendonbehalfto/.test(x))b|=SOB;
+    else if(/send-?as|sendenals/.test(x))b|=SA;
+    else if(/changepermission|berechtigungen?ändern/.test(x))b|=CP;
+    else if(/changeowner|besitzerändern/.test(x))b|=CO;
+    else if(/deleteitem|elementelöschen/.test(x))b|=DEL;
+    else if(/readpermission|berechtigungenlesen/.test(x))b|=RP;
+    else if(/externalaccount/.test(x))b|=EXT;
+    else if(/availabilityonly|limiteddetails|verfügbarkeit|eingeschränkt/.test(x))b|=FAV;
+    else if(/reviewer|prüfer|pruefer|readitems|foldervisible/.test(x))b|=FR;
+    else if(/owner|editor|author|contributor|besitzer|bearbeiter|autor|mitwirkend|createitems|edit|deleteall|deleteowned/.test(x))b|=FW;
+    else b|=OTH}
+  return b}
+
+/* Klassen: 0 Benutzer, 1 Gruppe, 2 System, 3 Admin, 4 breit, 5 verwaiste SID, 6 SELF, 7 unklar */
+const CLS_N=["User","Group","System","Admin","Broad","Orphan","Self","Unknown"];
+const SELF_RX=/^((nt authority|nt-autorität|nt-autoritaet)\\)?(self|selbst)$/i;
+const BROAD_RX=/^(everyone|jeder|default|standard|anonymous|anonym)$|(^|\\)(everyone|jeder|authenticated users|authentifizierte benutzer|domain users|domänen-benutzer|domain computers|domänencomputer|users|benutzer|anonymous logon|anonymous-anmeldung)$/i;
+const ADMIN_RX=/(^|\\)(domain admins|domänen-admins|enterprise admins|organisations-admins|schema admins|schema-admins|organization management|administrators|administratoren|administrator)$/i;
+const SYS_RX=/^(nt authority|nt-autorität|nt-autoritaet)\\(system|network service|netzwerkdienst|local service|lokaler dienst)$|(^|\\)(exchange servers|exchange trusted subsystem|exchange windows permissions|exchange organization administrators|exchange domain servers|exchange enterprise servers|exchange view-only administrators|exchange public folder administrators|exchange recipient administrators|exchange install domain servers|exchangelegacyinterop|managed availability servers|delegated setup|public folder management|recipient management|view-only organization management|discovery management|records management|compliance management|hygiene management|server management|um management|help desk|organization management - exchange)$/i;
+function classify(id,first,last,hasMem){const s=String(id).trim();if(SELF_RX.test(s))return 6;if(/^s-1-5-21-[\d-]+$/i.test(s))return 5;if(BROAD_RX.test(s))return 4;if(ADMIN_RX.test(s))return 3;if(SYS_RX.test(s)||/^s-1-5-(18|19|20)$/i.test(s))return 2;if(hasMem)return 1;if(first||last)return 0;return 7}
+function isPersonal(t){const x=low(t);if(!x)return true;return !/shared|room|equipment|discovery|arbitration|scheduling|publicfolder|monitoring|audit|systemmailbox|mailuser|contact|groupmailbox|team/.test(x)}
+function typeCat(t){const x=low(t);if(/shared/.test(x))return"shared";if(/room|equipment|scheduling/.test(x))return"resource";if(isPersonal(t))return"personal";return"other"}
+function tl(s){return low(s).replace(/ä/g,"ae").replace(/ö/g,"oe").replace(/ü/g,"ue").replace(/ß/g,"ss").normalize("NFD").replace(/[\u0300-\u036f]/g,"")}
+function stok(s){const t=tl(s).split(/[^a-z0-9]+/).filter(x=>x.length>1);return t.length>=2?t.sort().join(" "):""}
+function acct(s){let x=low(s);const i=x.lastIndexOf("\\");if(i>=0)x=x.slice(i+1);const j=x.indexOf("@");if(j>0)x=x.slice(0,j);return x}
+function pz(v){if(!v)return v;return"P-"+(hkey(low(v))%1679616).toString(36).toUpperCase().padStart(4,"0")}
+const SEVS=["Critical","High","Medium","Low","Info"];
+let cfg={sep:"auto",bigGroup:25,manyUsers:25,includeSys:false};
+let cur=null,cmp=null,deltaRes=null;const viewCache={};let latest={};
+const COLL=new Intl.Collator("de",{numeric:true,sensitivity:"base"}),PAIR_CAP=3000000;
+
+/* ---------- CSV-Spalten ---------- */
+const COLS={mailbox:["mailbox","postfach","displayname","mailboxname","identity"],smtp:["primarysmtpaddress","smtp","primarysmtp","emailaddress","email","windowsemailaddress","mail"],type:["mailboxtype","recipienttypedetails","recipienttype","typ","postfachtyp"],perm:["permission","permissions","accessrights","rights","berechtigung","extendedrights"],trustee:["adgrouporuser","user","trustee","identityreference","adgruppeoderbenutzer","benutzer","delegate"],first:["firstname","givenname","vorname"],last:["lastname","surname","sn","nachname"],members:["groupmembers","members","mitglieder","gruppenmitglieder"],inh:["inherited","isinherited","vererbt"]};
+function mapHeader(h){const n=h.map(x=>low(x).replace(/[\s"_\-]/g,""));const m={};for(const [k,alts] of Object.entries(COLS)){for(const a of alts){const i=n.indexOf(a);if(i>=0){m[k]=i;break}}}return m}
+function detectDelim(file){const fr=new FileReaderSync(),t=new TextDecoder("utf-8").decode(fr.readAsArrayBuffer(file.slice(0,Math.min(65536,file.size)))).replace(/^\uFEFF/,"");const line=t.split(/\r?\n/).find(x=>x.trim()&&!x.trim().startsWith("#"))||"";const c={";":(line.match(/;/g)||[]).length,",":(line.match(/,/g)||[]).length,"\t":(line.match(/\t/g)||[]).length};return Object.entries(c).sort((a,b)=>b[1]-a[1])[0][0]||","}
+function newModel(){return{c:{},rows:0,skipped:0,noneRows:0,missing:[],mbKey:new Map(),mbName:[],mbSmtp:[],mbType:[],trKey:new Map(),trId:[],trFirst:[],trLast:[],trRawMem:[],memName:new Map(),eKey:new Map(),eMb:[],eTr:[],eBE:[],eBI:[],eRaw:[]}}
+function addRow(M,r){
+  const c=M.c,g=k=>c[k]===undefined?"":String(r[c[k]]??"").trim();M.rows++;
+  const trustee=g("trustee"),name=g("mailbox"),smtp=g("smtp");if(!trustee||(!name&&!smtp)){M.skipped++;return}
+  const mk=low(smtp||name);let mb=M.mbKey.get(mk);if(mb===undefined){mb=M.mbName.length;M.mbKey.set(mk,mb);M.mbName.push(name||smtp);M.mbSmtp.push(smtp);M.mbType.push(g("type"))}
+  const tk=low(trustee);let t=M.trKey.get(tk);if(t===undefined){t=M.trId.length;M.trKey.set(tk,t);M.trId.push(trustee);M.trFirst.push("");M.trLast.push("");M.trRawMem.push(null)}
+  const fn=g("first"),ln=g("last"),mem=g("members");
+  if(!mem){if(fn&&!M.trFirst[t])M.trFirst[t]=fn;if(ln&&!M.trLast[t])M.trLast[t]=ln}
+  else{let s=M.trRawMem[t];if(!s){s=new Set();M.trRawMem[t]=s}if(s.size<20000)s.add(mem);if((fn||ln)&&M.memName.size<500000)M.memName.set(low(mem),(fn+" "+ln).trim())}
+  const permRaw=g("perm"),bits=permBits(permRaw),inh=boolVal(g("inh"))===true;if(!bits){M.noneRows++;return}
+  const ek=mb+"|"+t;let e=M.eKey.get(ek);if(e===undefined){e=M.eMb.length;M.eKey.set(ek,e);M.eMb.push(mb);M.eTr.push(t);M.eBE.push(0);M.eBI.push(0);M.eRaw.push(new Set())}
+  if(inh)M.eBI[e]|=bits;else M.eBE[e]|=bits;if(M.eRaw[e].size<6)M.eRaw[e].add(permRaw+(inh?" (geerbt)":""));
+}
+function loadCsv(file,withIndex,label){
+  const delim=detectDelim(file),d={file,name:file.name,delim,headers:[],count:0,anchors:new GrowArr(Float64Array,1024),dataStart:0,size:file.size,lastModified:file.lastModified||0};
+  const M=newModel(),sha=new Sha256();let hdr=false,last=-1;
+  const st=makeStream(file,0,file.size,delim,(r,s,e)=>{
+    if(!hdr){if(!nonEmpty(r)||String(r[0]).replace(/^\uFEFF/,"").trim().startsWith("#")){d.dataStart=e;return}
+      hdr=true;d.headers=r.map((x,i)=>(i===0?x.replace(/^\uFEFF/,""):x).trim());M.c=mapHeader(d.headers);d.dataStart=e;
+      const need=[["mailbox/PrimarySmtpAddress",M.c.mailbox!==undefined||M.c.smtp!==undefined],["Permission",M.c.perm!==undefined],["AD Group or User",M.c.trustee!==undefined]];
+      M.missing=need.filter(x=>!x[1]).map(x=>x[0]);if(M.missing.length)throw new Error(`Pflichtspalten fehlen: ${M.missing.join(", ")}. Erkannte Spalten: ${d.headers.join(" | ")}`);return}
+    if(!nonEmpty(r))return;
+    if(withIndex&&d.count%AE===0)d.anchors.push(s);d.count++;addRow(M,r)},sha);
+  while(st.step()){const pct=Math.floor(st.offset/Math.max(1,file.size)*100);if(pct!==last){last=pct;postMessage({type:"progress",label,fileName:file.name,pct,bytes:st.offset,total:file.size,rows:d.count})}}
+  if(!hdr)throw new Error("Keine Kopfzeile gefunden – ist die Datei leer?");
+  d.sha256=sha.hex();return{d,M};
+}
+
+/* ---------- Auswertung ---------- */
+function finalize(M){
+  const T=M.trId.length,MB=M.mbName.length,E=M.eMb.length;
+  let rawCount=0,withName=0;const cnt={";":0,"|":0,"\n":0,",":0};
+  for(let t=0;t<T;t++){const s=M.trRawMem[t];if(!s)continue;for(const v of s){rawCount++;if(M.memName.has(low(v)))withName++;if(rawCount<20000)for(const k in cnt)if(v.includes(k))cnt[k]++}}
+  M.perRow=rawCount>0&&withName/rawCount>0.5;
+  let sep=cfg.sep;if(sep==="auto")sep=M.perRow?"none":cnt[";"]?";":cnt["|"]?"|":cnt["\n"]?"\n":cnt[","]?",":"none";M.sepUsed=sep;
+  M.trMem=new Array(T);M.trHasMem=new Uint8Array(T);
+  for(let t=0;t<T;t++){const s=M.trRawMem[t],mm=new Map();if(s)for(const v of s){const parts=sep==="none"?[v]:v.split(sep==="\n"?/\r?\n/:sep);for(let p of parts){p=p.replace(/^[\s"'{}]+|[\s"'{}]+$/g,"");if(p)mm.set(low(p),p)}}M.trMem[t]=[...mm.values()];if(mm.size)M.trHasMem[t]=1}
+  M.trCls=new Int8Array(T);for(let t=0;t<T;t++)M.trCls[t]=classify(M.trId[t],M.trFirst[t],M.trLast[t],M.trHasMem[t]);
+  // Personen
+  M.pLabel=[];M.pName=[];M.pKind=[];M.pTokN=[];M.pAcct=[];M.pAlias=new Map();M.trPerson=new Int32Array(T).fill(-1);M.trMemP=new Array(T);M.broadP=-1;
+  const newP=(label,name,kind)=>{const p=M.pLabel.length;M.pLabel.push(label);M.pName.push(name);M.pKind.push(kind);M.pTokN.push(stok(name)||stok(acct(label).replace(/[._-]/g," ")));M.pAcct.push(acct(label));return p};
+  const alias=(k,p)=>{if(k&&!M.pAlias.has(k))M.pAlias.set(k,p)};
+  for(let t=0;t<T;t++){const c=M.trCls[t];if(M.trHasMem[t]||c===6||c===4)continue;if(c===2&&!cfg.includeSys)continue;
+    const f=M.trFirst[t],l=M.trLast[t],p=newP(M.trId[t],(f+" "+l).trim(),c===5?4:(c===2||c===3)?3:0);M.trPerson[t]=p;
+    alias(low(M.trId[t]),p);alias(acct(M.trId[t]),p);if(f&&l){alias(low(f+" "+l),p);alias(low(l+", "+f),p);alias(low(l+" "+f),p)}}
+  const pMember=m=>{const k=low(m);let p=M.pAlias.get(k);if(p===undefined){const a=acct(m);if(a!==k)p=M.pAlias.get(a)}
+    if(p===undefined){const nm=M.memName.get(k);if(nm)p=M.pAlias.get(low(nm));if(p===undefined){p=newP(m,nm||"",1);M.pAlias.set(k,p)}}return p};
+  const expand=(t,seen)=>{if(M.trMemP[t])return M.trMemP[t];seen.add(t);const out=new Set();
+    for(const m of M.trMem[t]){const g=M.trKey.get(low(m));if(g!==undefined&&g!==t&&M.trHasMem[g]){if(!seen.has(g))for(const p of expand(g,seen))out.add(p)}else out.add(pMember(m))}
+    const arr=Int32Array.from(out);M.trMemP[t]=arr;return arr};
+  for(let t=0;t<T;t++)if(M.trHasMem[t])expand(t,new Set());
+  // Eigentümer-Erkennung
+  M.mbTokN=new Array(MB);M.mbTokS=new Array(MB);M.mbLocal=new Array(MB);
+  for(let i=0;i<MB;i++){M.mbTokN[i]=stok(M.mbName[i]);const loc=low(M.mbSmtp[i]).split("@")[0];M.mbLocal[i]=loc;M.mbTokS[i]=stok(loc.replace(/[._-]/g," "))}
+  const isOwn=(p,mb)=>{const n=M.pTokN[p];if(n&&(n===M.mbTokN[mb]||n===M.mbTokS[mb]))return true;const a=M.pAcct[p];return !!(a&&a.length>=3&&a===M.mbLocal[mb])};
+  M.eOwn=new Uint8Array(E);for(let e=0;e<E;e++){const t=M.eTr[e],c=M.trCls[t];if(c===6)M.eOwn[e]=1;else if(M.trPerson[t]>=0&&(c===0||c===7)&&isOwn(M.trPerson[t],M.eMb[e]))M.eOwn[e]=1}
+  // Wirksamer Zugriff Person × Postfach
+  const pm=new Map();M.truncated=false;
+  const add=(p,e,own)=>{const mb=M.eMb[e],k=p*4194304+mb;let x=pm.get(k);if(!x){if(pm.size>=PAIR_CAP){M.truncated=true;return}x={p,mb,bE:0,bI:0,via:[],own:false};pm.set(k,x)}
+    x.bE|=M.eBE[e];x.bI|=M.eBI[e];const t=M.eTr[e];if(x.via.length<6&&!x.via.includes(t))x.via.push(t);if(own)x.own=true};
+  for(let e=0;e<E;e++){const t=M.eTr[e],c=M.trCls[t];if(c===6)continue;if(!cfg.includeSys&&(c===2||(c===3&&!M.eBE[e])))continue;
+    if(c===4){if(M.broadP<0)M.broadP=newP("* Alle Benutzer *","breite Identität (Everyone, Default, Domain Users …)",2);add(M.broadP,e,false);continue}
+    if(M.trHasMem[t]){for(const p of M.trMemP[t])add(p,e,isOwn(p,M.eMb[e]))}else if(M.trPerson[t]>=0)add(M.trPerson[t],e,M.eOwn[e]===1)}
+  M.pairs=[...pm.values()];
+  // Sortierung
+  const mbOrd=[...Array(MB).keys()].sort((a,b)=>COLL.compare(M.mbName[a],M.mbName[b]));M.mbRank=new Int32Array(MB);mbOrd.forEach((m,i)=>M.mbRank[m]=i);
+  const trOrd=[...Array(T).keys()].sort((a,b)=>COLL.compare(M.trId[a],M.trId[b]));M.trRank=new Int32Array(T);trOrd.forEach((t,i)=>M.trRank[t]=i);
+  const CO_=[2,3,6,5,0,1,7,4];
+  M.eOrder=Int32Array.from([...Array(E).keys()].sort((a,b)=>M.mbRank[M.eMb[a]]-M.mbRank[M.eMb[b]]||CO_[M.trCls[M.eTr[a]]]-CO_[M.trCls[M.eTr[b]]]||M.trRank[M.eTr[a]]-M.trRank[M.eTr[b]]));
+  const P=M.pLabel.length,pOrd=[...Array(P).keys()].sort((a,b)=>(M.pKind[a]===2?0:1)-(M.pKind[b]===2?0:1)||COLL.compare(M.pName[a]||M.pLabel[a],M.pName[b]||M.pLabel[b]));M.pRank=new Int32Array(P);pOrd.forEach((p,i)=>M.pRank[p]=i);
+  M.pairs.sort((x,y)=>M.pRank[x.p]-M.pRank[y.p]||M.mbRank[x.mb]-M.mbRank[y.mb]);
+  M.groups=Int32Array.from(trOrd.filter(t=>M.trHasMem[t]));
+  M.trMb=new Array(T);for(const e of M.eOrder){const t=M.eTr[e];if(M.trHasMem[t])(M.trMb[t]||(M.trMb[t]=[])).push(e)}
+  // Prüfhinweise
+  const F=[],push=(t,e,mb,tr,n,bits,key)=>F.push({t,e,mb,tr,n,bits,key}),inhAgg=new Map();
+  for(const e of M.eOrder){const mb=M.eMb[e],t=M.eTr[e],c=M.trCls[t],bE=M.eBE[e],bI=M.eBI[e],b=bE|bI,own=M.eOwn[e],pers=isPersonal(M.mbType[mb]),mk=low(M.mbSmtp[mb]||M.mbName[mb]),tk=low(M.trId[t]),K=x=>`ex|${x}|${mk}|${tk}`;
+    if(c===4){if(b&(FA|SA))push(0,e,mb,t,0,b&(FA|SA),K(0));else if(b&FW)push(14,e,mb,t,0,FW,K(14));else if(b&FR)push(15,e,mb,t,0,FR,K(15));continue}
+    if(c===5){push(5,e,mb,t,0,b,K(5));continue}
+    if(c===6||c===2||own)continue;
+    if(c===3){if(bE&(FA|SA|CP|CO))push(13,e,mb,t,0,bE&(FA|SA|CP|CO),K(13));continue}
+    if(c===7)push(10,e,mb,t,0,b,K(10));
+    if(bE){
+      if(pers){if((bE&FA)&&(bE&SA))push(3,e,mb,t,0,FA|SA,K(3));else{if(bE&FA)push(1,e,mb,t,0,FA,K(1));if(bE&SA)push(2,e,mb,t,0,SA,K(2))}if(bE&SOB)push(7,e,mb,t,0,SOB,K(7))}
+      else if(c===0&&(bE&(FA|SA)))push(6,e,mb,t,0,bE&(FA|SA),K(6));
+      if(bE&(CP|CO))push(4,e,mb,t,0,bE&(CP|CO),K(4));
+      if((bE&DEL)&&!(bE&FA))push(12,e,mb,t,0,DEL,K(12));
+      if(M.trHasMem[t]&&M.trMemP[t].length>=cfg.bigGroup&&(bE&(FA|SA)))push(8,e,mb,t,M.trMemP[t].length,bE&(FA|SA),K(8))}
+    const ib=bI&(FA|SA|CP|CO);if(ib){const k=t+"|"+ib;let a=inhAgg.get(k);if(!a){a={t,bits:ib,n:0,e};inhAgg.set(k,a)}a.n++}}
+  for(const a of inhAgg.values())push(9,a.e,M.eMb[a.e],a.t,a.n,a.bits,`ex|9|*|${low(M.trId[a.t])}|${a.bits}`);
+  const faCount=new Int32Array(MB),faByP=new Int32Array(P);
+  for(const x of M.pairs){if(x.own||M.pKind[x.p]===2)continue;if((x.bE|x.bI)&FA){faCount[x.mb]++;faByP[x.p]++}}
+  for(const mb of mbOrd)if(faCount[mb]>=cfg.manyUsers)push(11,-1,mb,-1,faCount[mb],FA,`ex|11|${low(M.mbSmtp[mb]||M.mbName[mb])}`);
+  F.sort((a,b)=>FT[a.t].s-FT[b.t].s||a.t-b.t||M.mbRank[a.mb]-M.mbRank[b.mb]);M.F=F;M.faCount=faCount;M.faByP=faByP;
+  // Kennzahlen
+  const types={},cats={personal:0,shared:0,resource:0,other:0};for(let i=0;i<MB;i++){const k=M.mbType[i]||"(leer)";types[k]=(types[k]||0)+1;cats[typeCat(M.mbType[i])]++}
+  const clsCount={};for(let t=0;t<T;t++){const k=CLS_N[M.trCls[t]];clsCount[k]=(clsCount[k]||0)+1}
+  const permCount={};for(let e=0;e<E;e++){const c=M.trCls[M.eTr[e]];if(c===2||c===6||M.eOwn[e])continue;const b=M.eBE[e]|M.eBI[e];for(const [bit,l] of PERM_TXT)if(b&bit)permCount[l]=(permCount[l]||0)+1}
+  const sev={},cat={};for(const f of F){const s=SEVS[FT[f.t].s];sev[s]=(sev[s]||0)+1;cat[FT[f.t].c]=(cat[FT[f.t].c]||0)+1}
+  M.topMb=mbOrd.filter(m=>faCount[m]>0).sort((a,b)=>faCount[b]-faCount[a]).slice(0,10);
+  M.topP=[...Array(P).keys()].filter(p=>faByP[p]>0&&M.pKind[p]!==2).sort((a,b)=>faByP[b]-faByP[a]).slice(0,10);
+  M.stats={rows:M.rows,skipped:M.skipped,noneRows:M.noneRows,mailboxes:MB,cats,edges:E,trustees:T,groups:M.groups.length,persons:P-(M.broadP>=0?1:0),pairs:M.pairs.length,truncated:M.truncated,types,clsCount,permCount,sev,cat,findings:F.length,sep:M.sepUsed,perRow:M.perRow,
+    faExplicit:M.eBE.reduce((a,b,e)=>a+((b&FA)&&!M.eOwn[e]&&M.trCls[M.eTr[e]]!==2&&M.trCls[M.eTr[e]]!==6?1:0),0),saExplicit:M.eBE.reduce((a,b,e)=>a+((b&SA)&&!M.eOwn[e]&&M.trCls[M.eTr[e]]!==2&&M.trCls[M.eTr[e]]!==6?1:0),0)};
+}
+
+/* ---------- Prüfhinweis-Typen ---------- */
+const who=o=>o.tr.cls==="Group"?`Gruppe ${o.tr.id} (${o.tr.members} Mitglieder)`:`${o.tr.id}${o.tr.name?" ("+o.tr.name+")":""}`;
+const FT=[
+ {s:0,c:"Breite Berechtigung",t:"Breite Identität mit Vollzugriff / Senden als",d:o=>`${o.tr.id} (faktisch alle Benutzer) hat ${permTxt(o.bits)} auf ${o.mb.name}. Jeder Mitarbeiter kann das Postfach lesen bzw. in dessen Namen senden.`},
+ {s:1,c:"Need-to-know",t:"Fremder Vollzugriff auf persönliches Postfach",d:o=>`${who(o)} kann das persönliche Postfach ${o.mb.name} vollständig lesen. Nur mit dokumentierter Vertretungs-/Assistenzregelung zulässig.`},
+ {s:1,c:"Identitätsmissbrauch",t:"Senden als auf persönliches Postfach",d:o=>`${who(o)} kann E-Mails als ${o.mb.name} versenden – der Empfänger sieht keinen Hinweis auf den tatsächlichen Absender.`},
+ {s:1,c:"Identitätsmissbrauch",t:"Vollzugriff + Senden als auf persönliches Postfach",d:o=>`${who(o)} kann ${o.mb.name} lesen und in dessen Namen senden (vollständige Identitätsübernahme). Nur für dokumentierte Stellvertretung.`},
+ {s:1,c:"Least Privilege",t:"Recht zum Ändern von Berechtigungen/Besitzer",d:o=>`${who(o)} hat ${permTxt(o.bits)} auf ${o.mb.name} und kann sich bzw. anderen weitere Rechte erteilen.`},
+ {s:1,c:"Verwaiste SID",t:"Nicht auflösbare SID",d:o=>`${o.tr.id} ist keinem Konto mehr zugeordnet (gelöschtes Konto oder Gruppe) und hat ${permTxt(o.bits)} auf ${o.mb.name}. Berechtigung entfernen.`},
+ {s:2,c:"Rollenkonzept",t:"Direkte Benutzerberechtigung auf Funktionspostfach",d:o=>`${who(o)} ist direkt statt über eine Gruppe auf ${o.mb.name} (${o.mb.type}) berechtigt. Erschwert Rezertifizierung und Offboarding.`},
+ {s:2,c:"Need-to-know",t:"Senden im Auftrag auf persönliches Postfach",d:o=>`${who(o)} darf im Auftrag von ${o.mb.name} senden. Vertretungsregelung prüfen.`},
+ {s:2,c:"Breite Berechtigung",t:"Große Gruppe mit Vollzugriff / Senden als",d:o=>`Gruppe ${o.tr.id} mit ${o.n} Mitgliedern hat ${permTxt(o.bits)} auf ${o.mb.name} (Schwellwert ${cfg.bigGroup}). Prüfen, ob alle Mitglieder den Zugriff benötigen.`},
+ {s:2,c:"Vererbung",t:"Geerbte Postfachberechtigung (Datenbank/Organisation)",d:o=>`${o.tr.id} hat geerbt ${permTxt(o.bits)} auf ${o.n} Postfächern. Wirkt auf alle Postfächer der Datenbank – Notwendigkeit und evtl. Deny prüfen (Get-MailboxPermission -Identity … | fl Deny).`},
+ {s:3,c:"Unbekannter Principal",t:"Principal ohne Namen und ohne Mitglieder",d:o=>`${o.tr.id}: weder Vor-/Nachname noch Gruppenmitglieder im Export. Leere Gruppe, Dienstkonto oder gelöschtes Objekt prüfen.`},
+ {s:2,c:"Need-to-know",t:"Postfach mit vielen Vollzugriff-Berechtigten",d:o=>`${o.n} Personen haben Vollzugriff auf ${o.mb.name} (Schwellwert ${cfg.manyUsers}).`},
+ {s:3,c:"Least Privilege",t:"Löschrecht ohne Vollzugriff",d:o=>`${who(o)} darf Elemente in ${o.mb.name} löschen (DeleteItem).`},
+ {s:2,c:"Administration",t:"Explizite Admin-Berechtigung auf Postfach",d:o=>`Administrative Identität ${o.tr.id} ist explizit (nicht geerbt) mit ${permTxt(o.bits)} auf ${o.mb.name} berechtigt. Admin-Zugriff auf Postfachinhalte braucht Begründung und Vier-Augen-Prinzip.`},
+ {s:1,c:"Breite Berechtigung",t:"Breite Identität mit Schreibrecht auf Postfachordner",d:o=>`${o.tr.id} hat Schreibrechte auf Ordner in ${o.mb.name} (${o.raw}).`},
+ {s:3,c:"Need-to-know",t:"Breite Identität mit Leserecht auf Postfachordner",d:o=>`${o.tr.id} kann Ordnerinhalte in ${o.mb.name} lesen (${o.raw}). Bei Kalendern oft gewollt – dann dokumentieren.`}
+];
+const FCAT=[...new Set(FT.map(f=>f.c))];
+
+/* ---------- Ausgabe (mit optionaler Pseudonymisierung) ---------- */
+function mbO(M,mb,p){const personal=isPersonal(M.mbType[mb]);let name=M.mbName[mb],smtp=M.mbSmtp[mb];if(p&&personal){name=pz(name);if(smtp){const [l,dm]=smtp.split("@");smtp=pz(l)+(dm?"@"+dm:"")}}return{name,smtp,type:M.mbType[mb],personal}}
+function trO(M,t,p){const c=M.trCls[t];let id=M.trId[t],nm=(M.trFirst[t]+" "+M.trLast[t]).trim();if(p&&(c===0||c===5||c===7)){id=pz(id);nm=""}return{id,name:nm,cls:CLS_N[c],members:M.trMemP&&M.trMemP[t]?M.trMemP[t].length:0}}
+function pO(M,q,p){if(p&&M.pKind[q]!==2)return{label:pz(M.pLabel[q]),name:""};return{label:M.pLabel[q],name:M.pName[q]}}
+function viaTxt(M,t,p){const o=trO(M,t,p);return M.trHasMem[t]?"Gruppe "+o.id:M.trCls[t]===4?o.id:"direkt"}
+function fRow(M,f,p){const mb=f.mb>=0?mbO(M,f.mb,p):{name:"",smtp:"",type:""},tr=f.tr>=0?trO(M,f.tr,p):{id:"",name:"",cls:"",members:0},raw=f.e>=0?[...M.eRaw[f.e]].join(" | "):"",ft=FT[f.t];
+  return{sev:SEVS[ft.s],cat:ft.c,title:ft.t,mailbox:mb.name,smtp:mb.smtp,type:mb.type,trustee:tr.id,tname:tr.name,cls:tr.cls,members:tr.members,bE:f.t===9?0:f.bits,bI:f.t===9?f.bits:0,n:f.n,detail:ft.d({mb,tr,n:f.n,bits:f.bits,raw}),_key:f.key}}
+const DK=["Neu","Entfernt","Geändert","Mitglied hinzugefügt","Mitglied entfernt"];
+function dRow(x,p){const M=x.src?cmp.M:cur.M;if(x.kind<=2){const mb=mbO(M,M.eMb[x.e],p),tr=trO(M,M.eTr[x.e],p);return{kind:DK[x.kind],mailbox:mb.name,smtp:mb.smtp,type:mb.type,trustee:tr.id,tname:tr.name,cls:tr.cls,bE:M.eBE[x.e],bI:M.eBI[x.e],oldE:x.kind===2?cmp.M.eBE[x.old]:0,oldI:x.kind===2?cmp.M.eBI[x.old]:0,member:""}}
+  const tr=trO(M,x.t,p);return{kind:DK[x.kind],mailbox:"",smtp:"",type:"",trustee:tr.id,tname:"",cls:tr.cls,bE:0,bI:0,oldE:0,oldI:0,member:p?pz(x.member):x.member}}
+function outRow(view,i,p,full){const M=cur.M;
+  if(view==="findings")return fRow(M,M.F[i],p);
+  if(view==="mailboxes"){const e=i,mb=mbO(M,M.eMb[e],p),tr=trO(M,M.eTr[e],p);return{mailbox:mb.name,smtp:mb.smtp,type:mb.type,trustee:tr.id,tname:tr.name,cls:tr.cls,members:tr.members,bE:M.eBE[e],bI:M.eBI[e],own:!!M.eOwn[e],raw:[...M.eRaw[e]].join(" | ")}}
+  if(view==="persons"){const x=M.pairs[i],q=pO(M,x.p,p),mb=mbO(M,x.mb,p);return{person:q.label,pname:q.name,mailbox:mb.name,smtp:mb.smtp,type:mb.type,bE:x.bE,bI:x.bI,own:x.own,via:x.via.map(t=>viaTxt(M,t,p)).join(", ")}}
+  if(view==="groups"){const t=i,o=trO(M,t,p),mem=M.trMemP[t],mbs=M.trMb[t]||[],L=full?1e9:60,LM=full?1e9:40;
+    return{group:o.id,cls:o.cls,members:mem.length,memberList:[...mem].slice(0,L).map(q=>{const x=pO(M,q,p);return x.name||x.label}).join("; ")+(mem.length>L?" …":""),mailboxes:mbs.length,mbList:mbs.slice(0,LM).map(e=>mbO(M,M.eMb[e],p).name).join("; ")+(mbs.length>LM?" …":""),bE:mbs.reduce((a,e)=>a|M.eBE[e],0),bI:mbs.reduce((a,e)=>a|M.eBI[e],0)}}
+  if(view==="delta")return dRow(deltaRes.items[i],p);
+}
+function fText(M,f){if(f._s===undefined)f._s=low([f.mb>=0?M.mbName[f.mb]+" "+M.mbSmtp[f.mb]:"",f.tr>=0?M.trId[f.tr]+" "+M.trFirst[f.tr]+" "+M.trLast[f.tr]:"",FT[f.t].t,FT[f.t].c].join(" "));return f._s}
+function viewList(view,f){
+  const M=cur.M,key=JSON.stringify(f||{}),q=low(f.search||"");if(viewCache[view]&&viewCache[view].key===key)return viewCache[view].list;const list=[];
+  if(view==="findings"){M.F.forEach((x,i)=>{const ft=FT[x.t];if(f.sev&&SEVS[ft.s]!==f.sev)return;if(f.cat&&ft.c!==f.cat)return;if(q&&!fText(M,x).includes(q))return;list.push(i)})}
+  else if(view==="mailboxes"){for(const e of M.eOrder){const t=M.eTr[e],c=M.trCls[t],mb=M.eMb[e];if(f.hideSys&&(c===2||c===6||(c===3&&!M.eBE[e])))continue;if(f.hideOwn&&M.eOwn[e])continue;if(f.type&&M.mbType[mb]!==f.type)continue;if(f.cls&&CLS_N[c]!==f.cls)continue;
+    const b=f.inh==="e"?M.eBE[e]:f.inh==="i"?M.eBI[e]:(M.eBE[e]|M.eBI[e]);if(!b)continue;if(f.perm&&!(b&Number(f.perm)))continue;
+    if(q&&!low(M.mbName[mb]+" "+M.mbSmtp[mb]+" "+M.trId[t]+" "+M.trFirst[t]+" "+M.trLast[t]).includes(q))continue;list.push(e)}}
+  else if(view==="persons"){M.pairs.forEach((x,i)=>{if(f.hideOwn&&x.own)return;if(f.type&&M.mbType[x.mb]!==f.type)return;const b=x.bE|x.bI;if(f.perm&&!(b&Number(f.perm)))return;
+    if(q&&!low(M.pLabel[x.p]+" "+M.pName[x.p]+" "+M.mbName[x.mb]+" "+M.mbSmtp[x.mb]+" "+x.via.map(t=>M.trId[t]).join(" ")).includes(q))return;list.push(i)})}
+  else if(view==="groups"){for(const t of M.groups){if(q&&!low(M.trId[t]+" "+M.trMem[t].join(" ")).includes(q))continue;list.push(t)}}
+  else if(view==="delta"&&deltaRes){deltaRes.items.forEach((x,i)=>{if(f.kind&&DK[x.kind]!==f.kind)return;if(q){const r=dRow(x,false);if(!low(r.mailbox+" "+r.smtp+" "+r.trustee+" "+r.member).includes(q))return}list.push(i)})}
+  viewCache[view]={key,list};return list}
+function clearCache(){for(const k of Object.keys(viewCache))delete viewCache[k]}
+
+/* ---------- Rohdaten (Streaming aus der Datei) ---------- */
+function pseudoRaw(r){const M=cur.M,c=M.c,o=r.slice();const g=k=>c[k]===undefined?"":String(r[c[k]]??"").trim();
+  const t=M.trKey.get(low(g("trustee")));if(t!==undefined&&[0,5,7].includes(M.trCls[t]))o[c.trustee]=pz(g("trustee"));
+  const mb=M.mbKey.get(low(g("smtp")||g("mailbox")));if(mb!==undefined&&isPersonal(M.mbType[mb])){const x=mbO(M,mb,true);if(c.mailbox!==undefined)o[c.mailbox]=x.name;if(c.smtp!==undefined)o[c.smtp]=x.smtp}
+  if(c.first!==undefined&&o[c.first])o[c.first]="•••";if(c.last!==undefined&&o[c.last])o[c.last]="•••";if(c.members!==undefined&&o[c.members])o[c.members]="(pseudonymisiert)";return o}
+function rawQuery(msg){const rid=msg.requestId,d=cur&&cur.d,size=Math.max(10,msg.size||100),q=low((msg.filters||{}).search||"");
+  if(!d){postMessage({type:"queryResult",view:"raw",requestId:rid,rows:[],headers:[],total:0,page:1,size});return}
+  const done=(idxs,total)=>{if(latest.raw!==rid)return;const pages=Math.max(1,Math.ceil(total/size)),page=Math.min(Math.max(1,msg.page||1),pages),s=(page-1)*size;let rows=idxs?readByIndices(d,idxs.slice(s,s+size)):readRange(d,s,s+size);if(msg.pseudo)rows=rows.map(pseudoRaw);postMessage({type:"queryResult",view:"raw",requestId:rid,rows,headers:d.headers,total,page,size})};
+  if(!q)return done(null,d.count);if(viewCache.raw&&viewCache.raw.key===q)return done(viewCache.raw.list,viewCache.raw.list.n);
+  const hits=new GrowArr(Uint32Array);let idx=0,last=-1;const st=makeStream(d.file,d.dataStart,d.file.size,d.delim,r=>{if(!nonEmpty(r))return;for(let i=0;i<r.length;i++)if(low(r[i]).includes(q)){hits.push(idx);break}idx++});
+  (function step(){if(latest.raw!==rid)return;let more;try{more=st.step()}catch(err){postMessage({type:"error",message:err.message});return}const pct=Math.floor((st.offset-d.dataStart)/Math.max(1,d.file.size-d.dataStart)*100);if(pct!==last){last=pct;postMessage({type:"scanProgress",view:"raw",pct,requestId:rid})}if(more)setTimeout(step,0);else{viewCache.raw={key:q,list:hits};done(hits,hits.n)}})()}
+function query(msg){const view=msg.view,rid=msg.requestId;latest[view]=rid;if(view==="raw")return rawQuery(msg);
+  if(!cur||(view==="delta"&&!deltaRes)){postMessage({type:"queryResult",view,requestId:rid,rows:[],total:0,page:1,size:msg.size||100});return}
+  const list=viewList(view,msg.filters||{}),size=Math.max(10,msg.size||100),pages=Math.max(1,Math.ceil(list.length/size)),page=Math.min(Math.max(1,msg.page||1),pages),s=(page-1)*size;
+  postMessage({type:"queryResult",view,requestId:rid,rows:list.slice(s,s+size).map(i=>outRow(view,i,msg.pseudo,false)),total:list.length,page,size})}
+
+/* ---------- Vergleich mit Vorlauf ---------- */
+function deltaCompute(){const A=cur.M,B=cmp.M,items=[];
+  const mapE=M=>{const m=new Map();for(let e=0;e<M.eMb.length;e++){const c=M.trCls[M.eTr[e]];if(c===2||c===6)continue;m.set(low(M.mbSmtp[M.eMb[e]]||M.mbName[M.eMb[e]])+"|"+low(M.trId[M.eTr[e]]),e)}return m};
+  const ea=mapE(A),eb=mapE(B);for(const [k,e] of ea){const f=eb.get(k);if(f===undefined)items.push({kind:0,src:0,e});else if(A.eBE[e]!==B.eBE[f]||A.eBI[e]!==B.eBI[f])items.push({kind:2,src:0,e,old:f})}
+  for(const [k,f] of eb)if(!ea.has(k))items.push({kind:1,src:1,e:f});
+  const gm=M=>{const m=new Map();for(let t=0;t<M.trId.length;t++)if(M.trHasMem[t])m.set(low(M.trId[t]),{t,set:new Map(M.trMem[t].map(x=>[low(x),x]))});return m};
+  const ga=gm(A),gb=gm(B);for(const [k,a] of ga){const b=gb.get(k);if(!b)continue;for(const [mk,mv] of a.set)if(!b.set.has(mk))items.push({kind:3,src:0,t:a.t,member:mv});for(const [mk,mv] of b.set)if(!a.set.has(mk))items.push({kind:4,src:1,t:b.t,member:mv})}
+  const counts=[0,0,0,0,0];items.forEach(x=>counts[x.kind]++);deltaRes={items,counts};delete viewCache.delta}
+function deltaInfo(){return deltaRes&&cmp?{name:cmp.d.name,sha256:cmp.d.sha256,rows:cmp.d.count,lastModified:cmp.d.lastModified,counts:DK.map((k,i)=>[k,deltaRes.counts[i]])}:null}
+
+/* ---------- Export CSV ---------- */
+const EXP={
+ findings:[["Priorität","sev"],["Kategorie","cat"],["Hinweis","title"],["Postfach","mailbox"],["SMTP","smtp"],["Typ","type"],["Berechtigter","trustee"],["Name","tname"],["Klasse","cls"],["Mitglieder","members"],["Rechte explizit",r=>permTxt(r.bE)],["Rechte geerbt",r=>permTxt(r.bI)],["Detail","detail"]],
+ mailboxes:[["Postfach","mailbox"],["SMTP","smtp"],["Typ","type"],["Berechtigter","trustee"],["Name","tname"],["Klasse","cls"],["Mitglieder","members"],["Rechte explizit",r=>permTxt(r.bE)],["Rechte geerbt",r=>permTxt(r.bI)],["Eigenes Postfach",r=>r.own?"ja":""],["Originalwert","raw"]],
+ persons:[["Person","person"],["Name","pname"],["Postfach","mailbox"],["SMTP","smtp"],["Typ","type"],["Rechte explizit",r=>permTxt(r.bE)],["Rechte geerbt",r=>permTxt(r.bI)],["Eigenes Postfach",r=>r.own?"ja":""],["über","via"]],
+ groups:[["Gruppe","group"],["Klasse","cls"],["Anzahl Mitglieder","members"],["Mitglieder","memberList"],["Anzahl Postfächer","mailboxes"],["Postfächer","mbList"],["Rechte explizit",r=>permTxt(r.bE)],["Rechte geerbt",r=>permTxt(r.bI)]],
+ delta:[["Änderung","kind"],["Postfach","mailbox"],["SMTP","smtp"],["Typ","type"],["Berechtigter","trustee"],["Klasse","cls"],["vorher",r=>r.kind==="Geändert"?permTxt(r.oldE|r.oldI):""],["nachher",r=>permTxt(r.bE|r.bI)],["Mitglied","member"]]};
+function csvQ(v){return`"${String(v??"").replace(/"/g,'""')}"`}
+function exportCsv(msg){const view=msg.view,rid=msg.requestId,cols=EXP[view],rv=msg.review||{};if(!cur||!cols){postMessage({type:"exportResult",requestId:rid,blob:new Blob([]),fileName:msg.fileName});return}
+  const list=viewList(view,msg.filters||{}),hdr=cols.map(c=>c[0]).concat(view==="findings"?["Review-Status","Kommentar","Reviewer","Datum"]:[]);
+  const parts=["\uFEFF"+hdr.map(csvQ).join(";")+"\r\n"];let i=0,buf="";
+  (function step(){const end=Math.min(list.length,i+5000);for(;i<end;i++){const r=outRow(view,list[i],msg.pseudo,true);const vals=cols.map(c=>typeof c[1]==="function"?c[1](r):r[c[1]]);if(view==="findings"){const x=rv[r._key]||{};vals.push(x.status||"offen",x.comment||"",x.reviewer||"",x.date||"")}buf+=vals.map(csvQ).join(";")+"\r\n"}
+    if(buf.length>4e6){parts.push(buf);buf=""}postMessage({type:"exportProgress",requestId:rid,pct:list.length?Math.floor(i/list.length*100):100});
+    if(i<list.length)setTimeout(step,0);else{if(buf)parts.push(buf);postMessage({type:"exportResult",requestId:rid,blob:new Blob(parts,{type:"text/csv;charset=utf-8"}),fileName:msg.fileName})}})()}
+
+/* ---------- Report-Daten ---------- */
+function fileInfo(){if(!cur)return null;const d=cur.d,M=cur.M;return{name:d.name,size:d.size,lastModified:d.lastModified,sha256:d.sha256,rows:d.count,delim:d.delim,headers:d.headers,mapped:Object.fromEntries(Object.entries(M.c).map(([k,i])=>[k,d.headers[i]]))}}
+function reportData(msg){const M=cur.M,p=!!msg.pseudo,inc=!!msg.includeSys,lim=msg.limit||5000,out={file:fileInfo(),stats:M.stats,cfg,delta:deltaInfo()};
+  if(msg.kind==="overview"){
+    const mbs=[],byMb=new Map();for(const e of M.eOrder){const mb=M.eMb[e];let o=byMb.get(mb);if(!o){const m=mbO(M,mb,p);o={name:m.name,smtp:m.smtp,type:m.type,cat:typeCat(M.mbType[mb]),fa:M.faCount[mb],entries:[],hidden:0};byMb.set(mb,o);mbs.push(o)}
+      const t=M.eTr[e],c=M.trCls[t];if(!inc&&(c===2||c===6||(c===3&&!M.eBE[e]))){o.hidden++;continue}const tr=trO(M,t,p);o.entries.push({trustee:tr.id,tname:tr.name,cls:tr.cls,members:tr.members,bE:M.eBE[e],bI:M.eBI[e],own:!!M.eOwn[e]})}
+    out.mailboxes=mbs;
+    out.groups=[...M.groups].map(t=>{const o=trO(M,t,p),mem=M.trMemP[t];return{group:o.id,cls:o.cls,members:[...mem].slice(0,lim).map(q=>{const x=pO(M,q,p);return x.name?x.name+" ("+x.label+")":x.label}),memberCount:mem.length,mailboxes:(M.trMb[t]||[]).map(e=>{const m=mbO(M,M.eMb[e],p);return{name:m.name,type:m.type,bE:M.eBE[e],bI:M.eBI[e]}})}});
+    if(msg.persons!==false){const pers=[];let curP=-1,o=null;for(const x of M.pairs){if(x.p!==curP){curP=x.p;const q=pO(M,x.p,p);o={label:q.label,name:q.name,kind:M.pKind[x.p],access:[],foreign:0};pers.push(o)}if(!x.own)o.foreign++;if(o.access.length<lim){const m=mbO(M,x.mb,p);o.access.push({mailbox:m.name,type:m.type,bE:x.bE,bI:x.bI,own:x.own,via:x.via.map(t=>viaTxt(M,t,p)).join(", ")})}}out.persons=pers}
+  }else{out.findings=M.F.slice(0,lim).map(f=>fRow(M,f,p));out.findingsTotal=M.F.length;if(deltaRes)out.deltaRows=deltaRes.items.slice(0,lim).map(x=>dRow(x,p))}
+  postMessage({type:"reportData",requestId:msg.requestId,data:out})}
+
+/* ---------- Dashboard ---------- */
+function dashboard(p){if(!cur)return null;const M=cur.M;return{stats:M.stats,file:fileInfo(),delta:deltaInfo(),topMb:M.topMb.map(mb=>{const m=mbO(M,mb,p);return{name:m.name,type:m.type,n:M.faCount[mb]}}),topP:M.topP.map(q=>{const x=pO(M,q,p);return{label:x.name||x.label,n:M.faByP[q]}}),
+  options:{types:Object.keys(M.stats.types).filter(x=>x!=="(leer)").sort(),cats:FCAT.filter(c=>M.stats.cat[c]),cls:CLS_N.filter(c=>M.stats.clsCount[c])},cfg}}
+
+onmessage=e=>{const msg=e.data;try{
+  if(msg.type==="load"){const t0=Date.now();const r=loadCsv(msg.file,true,"main");cur=r;finalize(cur.M);clearCache();deltaRes=null;if(cmp)deltaCompute();postMessage({type:"loaded",dash:dashboard(msg.pseudo),ms:Date.now()-t0})}
+  else if(msg.type==="loadCompare"){if(!cur)throw new Error("Bitte zuerst den aktuellen Export laden.");cmp=loadCsv(msg.file,false,"compare");finalize(cmp.M);deltaCompute();postMessage({type:"compareLoaded",delta:deltaInfo()})}
+  else if(msg.type==="query")query(msg);
+  else if(msg.type==="export")exportCsv(msg);
+  else if(msg.type==="report")reportData(msg);
+  else if(msg.type==="dashboard")postMessage({type:"dashboard",dash:dashboard(msg.pseudo)});
+  else if(msg.type==="settings"){Object.assign(cfg,msg.cfg||{});if(cur){finalize(cur.M);if(cmp){finalize(cmp.M);deltaCompute()}}clearCache();postMessage({type:"dashboard",dash:dashboard(msg.pseudo),settings:true})}
+  else if(msg.type==="reset"){cur=null;cmp=null;deltaRes=null;clearCache();latest={};postMessage({type:"resetDone"})}
+}catch(err){postMessage({type:"error",message:err.message,stack:err.stack||""})}};
+</script>
+<script>
+"use strict";
+const worker=new Worker(URL.createObjectURL(new Blob([document.getElementById("workerCode").textContent],{type:"application/javascript"})));
+const $=id=>document.getElementById(id),low=v=>String(v??"").trim().toLowerCase(),fmt=n=>Number(n||0).toLocaleString("de-DE"),mib=b=>(b/1048576).toFixed(1)+" MiB";
+const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const PERM=[[1,"Vollzugriff","crit"],[2,"Senden als","crit"],[8,"Berechtigungen ändern","crit"],[16,"Besitzer ändern","crit"],[4,"Senden im Auftrag","high"],[32,"Löschen","high"],[256,"Ordner schreiben","high"],[512,"Ordner lesen","read"],[2048,"Ordner Verfügbarkeit","low"],[64,"Berechtigungen lesen","low"],[128,"Externes Konto","low"],[1024,"Sonstiges","low"]];
+const CLS_DE={User:["Benutzer",""],Group:["Gruppe",""],System:["System","sys"],Admin:["Admin","adm"],Broad:["breit","bad"],Orphan:["SID verwaist","bad"],Self:["SELF","sys"],Unknown:["unklar","warn"]};
+const TYPE_DE={personal:"Persönliche Postfächer",shared:"Freigegebene Postfächer",resource:"Raum- und Ressourcenpostfächer",other:"Sonstige"};
+const SEV_ORDER=["Critical","High","Medium","Low","Info"];
+function chips(bE,bI){let h="";for(const [b,l,c] of PERM){if(bE&b)h+=`<span class="p p-${c}">${l}</span>`;else if(bI&b)h+=`<span class="p p-${c} inh" title="geerbt">${l} ⁱ</span>`}return h||'<span class="small">–</span>'}
+const clsTag=c=>{const x=CLS_DE[c];return x?`<span class="tag ${x[1]}">${x[0]}</span>`:esc(c)};
+const state={loaded:false,pseudo:false,seq:0,pages:{},current:{},review:new Map(),dash:null,exporting:false,reviewSaved:true};
+const pending={};
+function status(t,err){$("importStatus").innerHTML=err?`<span style="color:var(--danger)">${t}</span>`:t}
+function progress(name,pct,rows,bytes,total){$("progressWrap").style.display="block";$("progressTitle").innerHTML=`<span class="busy-dot"></span> ${esc(name)}`;$("progressPct").textContent=pct+" %";$("progressBar").style.width=pct+"%";$("progressSub").textContent=`${fmt(rows)} Zeilen · ${mib(bytes)} / ${mib(total)}`}
+function download(blob,name){const u=URL.createObjectURL(blob),a=document.createElement("a");a.href=u;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),5000)}
+function baseName(){const f=state.dash&&state.dash.file;return f?f.name.replace(/\.csv$/i,""):"Exchange"}
+const today=()=>new Date().toISOString().slice(0,10);
+
+/* ---------- Tabs ---------- */
+const VIEWS=["findings","mailboxes","persons","groups","delta","raw"];
+function showTab(id){document.querySelectorAll(".tab").forEach(x=>x.classList.toggle("active",x.id===id));document.querySelectorAll(".nav").forEach(x=>x.classList.toggle("active",x.dataset.tab===id));if(VIEWS.includes(id))requestPage(id);if(id==="nachweis")renderNachweis()}
+document.querySelectorAll(".nav").forEach(b=>b.onclick=()=>showTab(b.dataset.tab));
+function filters(v){const val=id=>$(id)?$(id).value:"",chk=id=>$(id)?$(id).checked:false;
+  if(v==="findings")return{sev:val("fSev"),cat:val("fCat"),search:val("fSearch").trim()};
+  if(v==="mailboxes")return{search:val("mSearch").trim(),type:val("mType"),perm:val("mPerm"),cls:val("mCls"),inh:val("mInh"),hideSys:chk("mHideSys"),hideOwn:chk("mHideOwn")};
+  if(v==="persons")return{search:val("pSearch").trim(),type:val("pType"),perm:val("pPerm"),hideOwn:chk("pHideOwn")};
+  if(v==="groups")return{search:val("gSearch").trim()};
+  if(v==="delta")return{search:val("dSearch").trim(),kind:val("dKind")};
+  if(v==="raw")return{search:val("rSearch").trim()}}
+function pg(v){return state.pages[v]||(state.pages[v]={page:1,size:100})}
+function requestPage(v){if(!state.loaded)return renderTable(v,{rows:[],total:0,page:1,size:100});const p=pg(v),rid=++state.seq;state.current[v]=rid;worker.postMessage({type:"query",view:v,page:p.page,size:p.size,filters:filters(v),requestId:rid,pseudo:state.pseudo});const i=$(v+"Info");if(i)i.innerHTML='<span class="busy-dot"></span> lädt …'}
+const timers={};const sched=(v,ms)=>{clearTimeout(timers[v]);timers[v]=setTimeout(()=>{pg(v).page=1;requestPage(v)},ms)};
+[["findings",["fSev","fCat","fSearch"]],["mailboxes",["mSearch","mType","mPerm","mCls","mInh","mHideSys","mHideOwn"]],["persons",["pSearch","pType","pPerm","pHideOwn"]],["groups",["gSearch"]],["delta",["dSearch","dKind"]],["raw",["rSearch"]]].forEach(([v,ids])=>ids.forEach(id=>$(id).addEventListener(/Search$/.test(id)?"input":"change",()=>sched(v,/Search$/.test(id)?350:0))));
+
+/* ---------- Tabellen ---------- */
+const COLS={
+ findings:[["_rv","Review"],["sev","Priorität"],["cat","Kategorie"],["title","Hinweis"],["mailbox","Postfach"],["type","Typ"],["trustee","Berechtigter"],["cls","Klasse"],["bits","Rechte"],["detail","Detail"]],
+ mailboxes:[["mailbox","Postfach"],["type","Typ"],["trustee","Berechtigter"],["cls","Klasse"],["members","Mitglieder"],["bits","Rechte"],["own","Hinweis"],["raw","Originalwert"]],
+ persons:[["person","Person"],["mailbox","Postfach"],["type","Typ"],["bits","Rechte"],["own","Hinweis"],["via","über"]],
+ groups:[["group","Gruppe"],["cls","Klasse"],["members","Mitglieder"],["memberList","Mitgliederliste"],["mailboxes","Postfächer"],["bits","Rechte (Summe)"],["mbList","Postfachliste"]],
+ delta:[["kind","Änderung"],["mailbox","Postfach"],["type","Typ"],["trustee","Berechtigter"],["cls","Klasse"],["old","vorher"],["bits","nachher"],["member","Mitglied"]]};
+const WRAP=new Set(["detail","memberList","mbList","raw","via","title"]);
+function cell(k,r){
+  if(k==="_rv"){const rv=state.review.get(r._key)||{};return`<select class="rv" data-key="${esc(r._key)}"><option value="">– offen –</option>${["Akzeptiert","Zu bereinigen","Falsch-positiv","In Klärung"].map(o=>`<option ${rv.status===o?"selected":""}>${o}</option>`).join("")}</select><input class="rvc" data-key="${esc(r._key)}" placeholder="Kommentar" value="${esc(rv.comment||"")}">`}
+  if(k==="sev")return`<span class="sev sev-${low(r.sev)}">${esc(r.sev)}</span>`;
+  if(k==="bits")return chips(r.bE,r.bI);if(k==="old")return r.kind==="Geändert"?chips(r.oldE,r.oldI):"";
+  if(k==="cls")return clsTag(r.cls);
+  if(k==="mailbox")return r.mailbox?`${esc(r.mailbox)}${r.smtp&&r.smtp!==r.mailbox?`<div class="sub">${esc(r.smtp)}</div>`:""}`:"";
+  if(k==="trustee")return`${esc(r.trustee)}${r.tname?`<div class="sub">${esc(r.tname)}</div>`:""}`;
+  if(k==="person")return`${esc(r.person)}${r.pname?`<div class="sub">${esc(r.pname)}</div>`:""}`;
+  if(k==="own")return r.own?'<span class="tag">eigenes Postfach</span>':"";
+  if(k==="kind")return`<span class="tag ${/Neu|hinzugefügt/.test(r.kind)?"bad":/Entfernt|entfernt/.test(r.kind)?"ok":"warn"}">${esc(r.kind)}</span>`;
+  if(k==="members"||k==="mailboxes")return r[k]?fmt(r[k]):"";
+  return esc(r[k])}
+function renderTable(v,msg){const t=$(v+"Table"),p=$(v+"Pager"),info=$(v+"Info");if(!t)return;
+  const cols=v==="raw"?(msg.headers||[]).map((h,i)=>[i,h]):COLS[v];
+  if(!cols||!cols.length||(!msg.total&&!state.loaded)){t.innerHTML='<tbody><tr><td class="empty">Keine Daten geladen.</td></tr></tbody>';p.innerHTML="";if(info)info.textContent="";return}
+  t.innerHTML=`<thead><tr>${cols.map(c=>`<th>${esc(c[1])}</th>`).join("")}</tr></thead><tbody>`+(msg.rows.length?msg.rows.map(r=>`<tr>${cols.map(c=>`<td class="${WRAP.has(c[0])?"wrap":""}">${v==="raw"?esc(r[c[0]]):cell(c[0],r)}</td>`).join("")}</tr>`).join(""):`<tr><td class="empty" colspan="${cols.length}">Keine Treffer.</td></tr>`)+"</tbody>";
+  t.querySelectorAll(".rv").forEach(s=>s.onchange=e=>setReview(e.target.dataset.key,{status:e.target.value}));t.querySelectorAll(".rvc").forEach(s=>s.onchange=e=>setReview(e.target.dataset.key,{comment:e.target.value}));
+  const pages=Math.max(1,Math.ceil(msg.total/msg.size)),s=msg.total?(msg.page-1)*msg.size+1:0,e=Math.min(msg.page*msg.size,msg.total);
+  p.innerHTML=`<span class="info">${fmt(s)}–${fmt(e)} von ${fmt(msg.total)}</span><label class="small">Zeilen <select data-a="size">${[50,100,250,500].map(n=>`<option ${n===msg.size?"selected":""}>${n}</option>`).join("")}</select></label><button data-a="first" ${msg.page<=1?"disabled":""}>«</button><button data-a="prev" ${msg.page<=1?"disabled":""}>‹</button><span class="small">Seite <input data-a="page" type="number" min="1" max="${pages}" value="${msg.page}" class="pgin"> / ${fmt(pages)}</span><button data-a="next" ${msg.page>=pages?"disabled":""}>›</button><button data-a="last" ${msg.page>=pages?"disabled":""}>»</button>`;
+  p.querySelectorAll("[data-a]").forEach(el=>{const a=el.dataset.a,P=pg(v);if(el.tagName==="BUTTON")el.onclick=()=>{P.page=a==="first"?1:a==="prev"?P.page-1:a==="next"?P.page+1:pages;requestPage(v)};else el.onchange=()=>{if(a==="size"){P.size=Number(el.value);P.page=1}else P.page=Math.min(pages,Math.max(1,Number(el.value)||1));requestPage(v)}});
+  if(info)info.textContent=fmt(msg.total)+" Einträge"}
+function setReview(key,patch){const cur=state.review.get(key)||{},n={...cur,...patch,reviewer:$("rvReviewer").value.trim(),date:today()};if(!n.status&&!n.comment)state.review.delete(key);else state.review.set(key,n);state.reviewSaved=false;$("cReview").textContent=fmt(state.review.size)}
+
+/* ---------- Dashboard ---------- */
+function bars(el,entries,label){const mx=Math.max(1,...entries.map(x=>x[1]));$(el).innerHTML=entries.length?entries.map(([n,v,h])=>`<div class="bar-row"><div title="${esc(n)}">${h||esc(n.length>30?n.slice(0,30)+"…":n)}</div><div class="bar"><span style="width:${v/mx*100}%"></span></div><div>${fmt(v)}</div></div>`).join(""):`<div class="empty">${label||"–"}</div>`}
+function setOpts(id,vals,labeler){const e=$(id);const old=e.value;e.innerHTML='<option value="">Alle</option>'+vals.map(v=>`<option value="${esc(v)}">${esc(labeler?labeler(v):v)}</option>`).join("");if([...e.options].some(o=>o.value===old))e.value=old}
+function renderDash(d){state.dash=d;if(!d)return;const s=d.stats;
+  kMb.textContent=fmt(s.mailboxes);kMbSub.textContent=`${fmt(s.cats.personal)} persönlich · ${fmt(s.cats.shared)} freigegeben · ${fmt(s.cats.resource)} Ressourcen`;
+  kRows.textContent=fmt(s.rows);kPers.textContent=fmt(s.persons);kFa.textContent=fmt(s.faExplicit);kFaSub.textContent=`explizit, ohne System/Eigentümer · Senden als: ${fmt(s.saExplicit)}`;kCrit.textContent=fmt(s.sev.Critical||0);kHigh.textContent=fmt(s.sev.High||0);
+  cFindings.textContent=fmt(s.findings);cMailboxes.textContent=fmt(s.mailboxes);cPersons.textContent=fmt(s.persons);cGroups.textContent=fmt(s.groups);cRaw.textContent=fmt(s.rows);cDelta.textContent=d.delta?fmt(d.delta.counts.reduce((a,x)=>a+x[1],0)):"–";
+  bars("typeBars",Object.entries(s.types).sort((a,b)=>b[1]-a[1]));
+  bars("permBars",PERM.filter(x=>s.permCount[x[1]]).map(([b,l,c])=>[l,s.permCount[l],`<span class="p p-${c}">${l}</span>`]),"Keine Berechtigungen");
+  bars("catBars",Object.entries(s.cat).sort((a,b)=>b[1]-a[1]),"Keine Prüfhinweise");
+  bars("topMbBars",d.topMb.map(x=>[x.name,x.n]),"–");bars("topPBars",d.topP.map(x=>[x.label,x.n]),"–");
+  const f=d.file;fmtBox.innerHTML=`<div>Datei</div><div>${esc(f.name)} (${mib(f.size)})</div><div>Datei-Datum</div><div>${f.lastModified?new Date(f.lastModified).toLocaleString("de-DE"):"–"}</div><div>SHA-256</div><div class="mono">${esc(f.sha256)} ${hashCheck()}</div><div>Datenzeilen</div><div>${fmt(f.rows)} (${fmt(s.skipped)} unvollständig, ${fmt(s.noneRows)} ohne Recht)</div><div>Trennzeichen CSV</div><div>${f.delim==="\t"?"Tab":esc(f.delim)}</div><div>Spaltenzuordnung</div><div>${Object.entries(f.mapped).map(([k,v])=>`${esc(k)}=<b>${esc(v)}</b>`).join(", ")}</div><div>Gruppenmitglieder</div><div>${s.perRow?"eine Zeile je Mitglied":"Liste, Trennzeichen "+(s.sep==="\n"?"Zeilenumbruch":s.sep==="none"?"keins":"„"+esc(s.sep)+"“")}</div><div>Principals</div><div>${Object.entries(s.clsCount).map(([k,v])=>`${(CLS_DE[k]||[k])[0]}: ${fmt(v)}`).join(" · ")}</div><div>Personen × Postfächer</div><div>${fmt(s.pairs)}${s.truncated?' <span class="tag bad">gekappt</span>':""}</div>`;
+  setOpts("fCat",d.options.cats);setOpts("mType",d.options.types);setOpts("pType",d.options.types);setOpts("mCls",d.options.cls,c=>(CLS_DE[c]||[c])[0]);
+  const on=state.loaded;["btnOverview","btnNachweis","btnExport","btnReset","btnCompare"].forEach(id=>$(id).disabled=!on||state.exporting)}
+function hashCheck(){const exp=low($("expHash").value).replace(/[^0-9a-f]/g,"");if(!exp||!state.dash)return"";return exp===state.dash.file.sha256?'<span class="tag ok">stimmt mit erwartetem Hash überein</span>':'<span class="tag bad">ABWEICHUNG zum erwarteten Hash</span>'}
+expHash.addEventListener("input",()=>{if(state.dash)renderDash(state.dash)});
+
+/* ---------- Worker-Nachrichten ---------- */
+worker.onmessage=e=>{const m=e.data;
+  if(m.type==="progress")progress(m.fileName,m.pct,m.rows,m.bytes,m.total);
+  else if(m.type==="loaded"){$("progressWrap").style.display="none";state.loaded=true;state.pages={};renderDash(m.dash);const f=m.dash.file;$("fileList").innerHTML=`<span class="file-pill ok">✓ ${esc(f.name)} · ${fmt(f.rows)} Zeilen · ${mib(f.size)}</span>`;status(`${esc(f.name)}: ${fmt(f.rows)} Zeilen in ${(m.ms/1000).toFixed(1)} s ausgewertet – ${fmt(m.dash.stats.mailboxes)} Postfächer, ${fmt(m.dash.stats.findings)} Prüfhinweise. SHA-256 ${esc(f.sha256.slice(0,16))}…`);const a=document.querySelector(".tab.active");if(a&&VIEWS.includes(a.id))requestPage(a.id)}
+  else if(m.type==="compareLoaded"){$("progressWrap").style.display="none";compareStatus.innerHTML=deltaText(m.delta);worker.postMessage({type:"dashboard",pseudo:state.pseudo});pg("delta").page=1;requestPage("delta")}
+  else if(m.type==="dashboard"){renderDash(m.dash);if(m.settings){status("Einstellungen übernommen, Auswertung neu berechnet.");const a=document.querySelector(".tab.active");if(a&&VIEWS.includes(a.id))requestPage(a.id)}}
+  else if(m.type==="scanProgress"){if(state.current[m.view]!==m.requestId)return;const i=$(m.view+"Info");if(i)i.innerHTML=`<span class="busy-dot"></span> Datei wird durchsucht … ${m.pct} %`}
+  else if(m.type==="queryResult"){if(state.current[m.view]!==m.requestId)return;const P=pg(m.view);P.page=m.page;P.size=m.size;renderTable(m.view,m)}
+  else if(m.type==="exportProgress"){btnExport.textContent=`Export … ${m.pct} %`}
+  else if(m.type==="exportResult"){state.exporting=false;btnExport.textContent="Ansicht als CSV";renderDash(state.dash);download(m.blob,m.fileName)}
+  else if(m.type==="reportData"){const cb=pending[m.requestId];if(cb){delete pending[m.requestId];cb(m.data)}}
+  else if(m.type==="resetDone"){Object.assign(state,{loaded:false,pages:{},current:{},dash:null,reviewSaved:true});state.review.clear();$("cReview").textContent="0";$("fileList").innerHTML="";compareStatus.textContent="";status("Alle Daten und Review-Stände wurden aus dem Browser-Speicher entfernt.");["kMb","kRows","kPers","kFa","kCrit","kHigh"].forEach(id=>$(id).textContent="0");["typeBars","permBars","catBars","topMbBars","topPBars","fmtBox"].forEach(id=>$(id).innerHTML="");VIEWS.forEach(v=>renderTable(v,{rows:[],total:0}));["btnOverview","btnNachweis","btnExport","btnReset","btnCompare"].forEach(id=>$(id).disabled=true)}
+  else if(m.type==="error"){$("progressWrap").style.display="none";state.exporting=false;btnExport.textContent="Ansicht als CSV";status("Fehler: "+esc(m.message),true);console.error(m.stack);if(state.dash)renderDash(state.dash)}};
+function deltaText(d){return d?`Vergleich mit <b>${esc(d.name)}</b> (${fmt(d.rows)} Zeilen, SHA-256 ${esc(d.sha256.slice(0,16))}…): `+d.counts.map(([k,n])=>`${esc(k)} <b>${fmt(n)}</b>`).join(" · "):""}
+
+/* ---------- Laden ---------- */
+function loadFile(f){if(!f)return;if(!/\.(csv|txt)$/i.test(f.name)){status("Bitte eine CSV-Datei wählen.",true);return}progress(f.name,0,0,0,f.size);worker.postMessage({type:"load",file:f,pseudo:state.pseudo})}
+btnChoose.onclick=()=>fileInput.click();fileInput.onchange=e=>{loadFile(e.target.files[0]);e.target.value=""};
+["dragenter","dragover"].forEach(n=>dropZone.addEventListener(n,e=>{e.preventDefault();dropZone.classList.add("drag")}));["dragleave","drop"].forEach(n=>dropZone.addEventListener(n,e=>{e.preventDefault();dropZone.classList.remove("drag")}));dropZone.addEventListener("drop",e=>loadFile(e.dataTransfer.files[0]));
+btnCompare.onclick=()=>compareInput.click();compareInput.onchange=e=>{const f=e.target.files[0];if(f){progress(f.name,0,0,0,f.size);worker.postMessage({type:"loadCompare",file:f})}e.target.value=""};
+btnReset.onclick=()=>{if(confirm("Alle geladenen Daten und Review-Stände aus dem Browser entfernen?"))worker.postMessage({type:"reset"})};
+pseudoToggle.onchange=e=>{state.pseudo=e.target.checked;document.body.classList.toggle("pseudo",state.pseudo);if(state.loaded){worker.postMessage({type:"dashboard",pseudo:state.pseudo});const a=document.querySelector(".tab.active");if(a&&VIEWS.includes(a.id))requestPage(a.id)}};
+btnSettings.onclick=()=>{if(!state.loaded)return;status('<span class="busy-dot"></span> Auswertung wird neu berechnet …');worker.postMessage({type:"settings",cfg:{sep:setSep.value,bigGroup:Number(setBig.value)||25,manyUsers:Number(setMany.value)||25,includeSys:setSys.checked},pseudo:state.pseudo})};
+btnExport.onclick=()=>{const a=document.querySelector(".tab.active"),v=a&&["findings","mailboxes","persons","groups","delta"].includes(a.id)?a.id:"findings";state.exporting=true;renderDash(state.dash);const names={findings:"Pruefhinweise",mailboxes:"Postfachberechtigungen",persons:"Personen_Postfaecher",groups:"Gruppen",delta:"Vergleich"};
+  worker.postMessage({type:"export",view:v,filters:filters(v),requestId:++state.seq,pseudo:state.pseudo,fileName:`Exchange_${names[v]}_${today()}${state.pseudo?"_pseudonymisiert":""}.csv`,review:Object.fromEntries(state.review)})};
+
+/* ---------- Review speichern/laden ---------- */
+btnRvSave.onclick=()=>{const f=state.dash&&state.dash.file;const o={format:"exaudit-review",version:1,exported:new Date().toISOString(),reviewer:$("rvReviewer").value.trim(),source:f?{name:f.name,sha256:f.sha256}:null,items:[...state.review.entries()].map(([key,v])=>({key,...v}))};download(new Blob([JSON.stringify(o,null,1)],{type:"application/json"}),`Exchange_Review_${baseName()}.json`);state.reviewSaved=true};
+rvInput.onchange=async e=>{const f=e.target.files[0];e.target.value="";if(!f)return;try{const o=JSON.parse(await f.text());if(o.format!=="exaudit-review")throw new Error("Keine Exchange-Review-Datei.");for(const it of o.items||[])state.review.set(it.key,{status:it.status,comment:it.comment,reviewer:it.reviewer,date:it.date});$("cReview").textContent=fmt(state.review.size);status(`${fmt((o.items||[]).length)} Review-Einträge übernommen${o.source?" (Quelle "+esc(o.source.name)+")":""}.`);const a=document.querySelector(".tab.active");if(a&&VIEWS.includes(a.id))requestPage(a.id)}catch(err){status("Review-Import fehlgeschlagen: "+esc(err.message),true)}};
+window.addEventListener("beforeunload",e=>{if(state.review.size&&!state.reviewSaved){e.preventDefault();e.returnValue=""}});
+function renderNachweis(){const d=state.dash;nwFile.innerHTML=d?`<div>Datei</div><div>${esc(d.file.name)}</div><div>SHA-256</div><div class="mono">${esc(d.file.sha256)} ${hashCheck()}</div><div>Zeilen</div><div>${fmt(d.file.rows)}</div><div>Vergleichslauf</div><div>${d.delta?esc(d.delta.name)+" – "+d.delta.counts.map(([k,n])=>k+": "+n).join(", "):"–"}</div><div>Review-Einträge</div><div>${fmt(state.review.size)}</div>`:'<div>–</div><div>Noch keine Datei geladen.</div>'}
+
+/* ---------- HTML-Reports ---------- */
+function reportAsync(kind,opts){return new Promise(res=>{const rid=++state.seq;pending[rid]=res;worker.postMessage({type:"report",kind,requestId:rid,pseudo:state.pseudo,...opts})})}
+const RCSS=`body{font-family:Segoe UI,Arial,sans-serif;font-size:12px;color:#111;margin:0;background:#fff}.wrap{max-width:1500px;margin:0 auto;padding:22px 28px}h1{font-size:21px;margin:0 0 4px}h2{font-size:16px;margin:30px 0 8px;padding-bottom:4px;border-bottom:2px solid #1d4ed8}
+table{border-collapse:collapse;width:100%;font-size:11px;margin:6px 0;table-layout:fixed}th,td{border:1px solid #cfd6e0;padding:4px 6px;text-align:left;vertical-align:top;overflow-wrap:anywhere}th{background:#eef2f8}tr:nth-child(even) td{background:#fafbfd}.kv{table-layout:auto}.kv td:first-child{width:240px;font-weight:600;background:#f4f6fa}
+.muted{color:#667}.mono{font-family:Consolas,monospace;font-size:10px}.note{background:#f4f6fa;border-left:4px solid #1d4ed8;padding:8px 10px;margin:10px 0}.warnbox{background:#fff6e5;border-left-color:#d97706}
+.p{display:inline-block;padding:1px 6px;border-radius:4px;font-size:10px;font-weight:600;white-space:nowrap;margin:1px 2px 1px 0}.p-crit{background:#fde2e4;color:#9f1239}.p-high{background:#fff1cc;color:#92400e}.p-read{background:#dcfce7;color:#166534}.p-low{background:#e5e7eb;color:#374151}.p.inh{border:1px dashed currentColor;background:transparent}
+.tag{display:inline-block;padding:0 5px;border-radius:3px;font-size:10px;background:#e8edf5;color:#334;margin-right:3px}.tag.bad{background:#fde2e4;color:#9f1239}.tag.adm,.tag.sys{background:#ede9fe;color:#5b21b6}.tag.warn{background:#fff1cc;color:#92400e}.tag.ok{background:#dcfce7;color:#166534}
+.sev{display:inline-block;padding:1px 6px;border-radius:4px;font-size:10px;font-weight:700}.sev-critical{background:#9f1239;color:#fff}.sev-high{background:#fde2e4;color:#9f1239}.sev-medium{background:#fff1cc;color:#92400e}.sev-low{background:#e0ecff;color:#1e40af}.sev-info{background:#e5e7eb;color:#374151}
+details{margin:6px 0}summary{cursor:pointer;font-weight:600;padding:5px 8px;background:#eef2f8;border:1px solid #cfd6e0;border-radius:4px}details details summary{background:#f7f9fc;font-weight:500}.box{border:1px solid #cfd6e0;border-top:0;padding:6px 10px}
+.toc a{margin-right:14px}.tools{position:sticky;top:0;background:#fff;padding:8px 0;border-bottom:1px solid #ddd;z-index:5;display:flex;gap:10px;align-items:center}.tools input{padding:5px 8px;border:1px solid #bbb;border-radius:4px;min-width:300px}.hidden{display:none}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:8px;margin:8px 0}.card{border:1px solid #cfd6e0;border-radius:6px;padding:8px 10px}.card b{font-size:18px;display:block}.sig td{height:42px}.mem{font-size:11px;line-height:1.6}
+@media print{.tools{display:none}details>summary{list-style:none}.box{display:block!important}h2{page-break-after:avoid}tr{page-break-inside:avoid}}`;
+const RJS=`<script>(function(){var q=document.getElementById('q');if(!q)return;var n=document.getElementById('qn'),rows=document.querySelectorAll('.r');q.addEventListener('input',function(){var v=q.value.trim().toLowerCase(),c=0;rows.forEach(function(r){var h=!v||r.getAttribute('data-t').indexOf(v)>=0;r.classList.toggle('hidden',!h);if(h)c++;if(h&&v&&r.tagName==='DETAILS'){r.open=true;var p=r.parentElement&&r.parentElement.closest('details');if(p)p.open=true}});n.textContent=v?c+' Treffer':''})})();window.addEventListener('beforeprint',function(){document.querySelectorAll('details').forEach(function(d){d.open=true})});<\/script>`;
+const kv=o=>`<table class="kv"><tbody>${Object.entries(o).map(([k,v])=>`<tr><td>${esc(k)}</td><td>${v}</td></tr>`).join("")}</tbody></table>`;
+const cg=w=>`<colgroup>${w.map(x=>`<col style="width:${x}%">`).join("")}</colgroup>`;
+const legend=()=>PERM.slice(0,9).map(([b,l,c])=>`<span class="p p-${c}">${l}</span>`).join(" ")+' <span class="p p-crit inh">geerbt ⁱ</span>';
+function frame(d,extra){const f=d.file,s=d.stats,resp=$("rvResponsible").value.trim(),reviewer=$("rvReviewer").value.trim();
+  return kv({"Verantwortlicher":esc(resp||"–"),"Reviewer":esc(reviewer||"–"),...extra,"Quelldatei":`${esc(f.name)} · ${fmt(f.rows)} Zeilen · ${mib(f.size)} · Datei-Datum ${f.lastModified?new Date(f.lastModified).toLocaleString("de-DE"):"–"}`,"SHA-256 (im Browser berechnet)":`<span class="mono">${esc(f.sha256)}</span> ${hashCheck()}`,"Gruppenmitglieder":s.perRow?"eine Zeile je Mitglied":"Liste, Trennzeichen "+(s.sep==="\n"?"Zeilenumbruch":s.sep==="none"?"keins":"„"+esc(s.sep)+"“"),"Schwellwerte":`große Gruppe ab ${d.cfg.bigGroup} Mitgliedern · viele Berechtigte ab ${d.cfg.manyUsers} Personen · System/Admin in Wirksamkeit: ${d.cfg.includeSys?"ja":"nein"}`,"Legende Rechte":legend()})}
+function reportShell(title,sub,toc,body){return`<!DOCTYPE html><html lang="de"><head><meta charset="utf-8"><title>${esc(title)}</title><style>${RCSS}</style></head><body><div class="wrap"><h1>${esc(title)}</h1><div class="muted">${sub}</div>
+<div class="tools"><input id="q" placeholder="Filtern: Postfach, Gruppe, Person …"><span class="muted" id="qn"></span><button onclick="document.querySelectorAll('details').forEach(function(d){d.open=true})">alle öffnen</button><button onclick="document.querySelectorAll('details').forEach(function(d){d.open=false})">alle schließen</button><button onclick="window.print()">Drucken / PDF</button></div>
+<p class="toc">${toc}</p>${body}
+<h2 id="sig">Bestätigung</h2><p>Die vorstehenden Ergebnisse wurden geprüft. Zugriffe, die nicht dem Need-to-know-Prinzip entsprechen, sind mit Review-Status dokumentiert; „Zu bereinigen“ ist mit Frist nachzuverfolgen.</p><table class="kv sig"><tbody><tr><td>Reviewer / Datum / Unterschrift</td><td></td></tr><tr><td>Verantwortlicher / Datum / Unterschrift</td><td></td></tr></tbody></table>
+<p class="mono muted">Powered by marciifee · Erzeugt mit Exchange Permission Audit WebGUI – Verarbeitung lokal im Browser, keine Übertragung der Audit-Daten.</p></div>${RJS}</body></html>`}
+async function withBtn(btn,fn){if(!state.loaded)return;btn.disabled=true;const l=btn.textContent;btn.textContent="Erstelle …";try{await fn()}catch(err){status("Report fehlgeschlagen: "+esc(err.message),true);console.error(err)}finally{btn.textContent=l;btn.disabled=false}}
+btnOverview.onclick=()=>withBtn(btnOverview,async()=>{
+  const d=await reportAsync("overview",{includeSys:ovSys.checked,persons:ovPersons.checked,limit:Number(ovLimit.value)||500}),s=d.stats,now=new Date();
+  const byCat={personal:[],shared:[],resource:[],other:[]};d.mailboxes.forEach(m=>byCat[m.cat].push(m));
+  const mbHtml=Object.entries(byCat).filter(x=>x[1].length).map(([c,list])=>`<details open><summary>${TYPE_DE[c]} <span class="muted">– ${fmt(list.length)} Postfächer</span></summary><div class="box">${list.map(m=>{const ext=m.entries.filter(x=>!x.own);return`<details class="r" data-t="${esc(low(m.name+" "+m.smtp+" "+m.entries.map(x=>x.trustee+" "+x.tname).join(" ")))}"><summary>${esc(m.name)} <span class="muted">${esc(m.smtp)} · ${esc(m.type)} · ${ext.length?fmt(ext.length)+" Berechtigte":"nur Eigentümer"}${m.fa?" · "+fmt(m.fa)+" Personen mit Vollzugriff":""}</span></summary><div class="box">${m.entries.length?`<table>${cg([34,11,9,32,14])}<thead><tr><th>Berechtigter</th><th>Klasse</th><th>Mitglieder</th><th>Rechte</th><th>Hinweis</th></tr></thead><tbody>${m.entries.map(x=>`<tr><td>${esc(x.trustee)}${x.tname?` <span class="muted">(${esc(x.tname)})</span>`:""}</td><td>${clsTag(x.cls)}</td><td>${x.members?fmt(x.members):""}</td><td>${chips(x.bE,x.bI)}</td><td>${x.own?'<span class="tag">Eigentümer</span>':""}</td></tr>`).join("")}</tbody></table>`:'<p class="muted">Keine Berechtigungen außer Exchange-System und Eigentümer (SELF).</p>'}${m.hidden?`<div class="muted">+ ${fmt(m.hidden)} System-/Admin-Standardeinträge ausgeblendet (Exchange Servers, SELF, geerbte Admin-Gruppen).</div>`:""}</div></details>`}).join("")}</div></details>`).join("");
+  const grpHtml=d.groups.length?d.groups.map(g=>`<details class="r" data-t="${esc(low(g.group+" "+g.members.join(" ")+" "+g.mailboxes.map(x=>x.name).join(" ")))}"><summary>${esc(g.group)} ${clsTag(g.cls)} <span class="muted">– ${fmt(g.memberCount)} Mitglieder · ${fmt(g.mailboxes.length)} Postfächer</span></summary><div class="box"><b>Mitglieder (aufgelöst, inkl. verschachtelter Gruppen)</b><div class="mem">${g.members.map(esc).join(" · ")}${g.memberCount>g.members.length?` <span class="muted">… ${fmt(g.memberCount-g.members.length)} weitere</span>`:""}</div><b>Berechtigt auf</b><table>${cg([50,20,30])}<thead><tr><th>Postfach</th><th>Typ</th><th>Rechte</th></tr></thead><tbody>${g.mailboxes.map(x=>`<tr><td>${esc(x.name)}</td><td>${esc(x.type)}</td><td>${chips(x.bE,x.bI)}</td></tr>`).join("")}</tbody></table></div></details>`).join(""):'<p class="muted">Keine Gruppen mit Mitgliedern im Export.</p>';
+  const persHtml=!d.persons?'<p class="muted">Abschnitt deaktiviert.</p>':d.persons.map(p=>`<details class="r" data-t="${esc(low(p.label+" "+p.name+" "+p.access.map(x=>x.mailbox).join(" ")))}"><summary>${esc(p.name||p.label)} ${p.name?`<span class="muted">${esc(p.label)}</span>`:""}${p.kind===2?' <span class="tag bad">alle Benutzer</span>':p.kind===4?' <span class="tag bad">SID verwaist</span>':p.kind===3?' <span class="tag adm">Admin/System</span>':""} <span class="muted">– ${fmt(p.foreign)} fremde Postfächer</span></summary><div class="box"><table>${cg([32,14,28,18,8])}<thead><tr><th>Postfach</th><th>Typ</th><th>Rechte</th><th>über</th><th>Hinweis</th></tr></thead><tbody>${p.access.map(x=>`<tr><td>${esc(x.mailbox)}</td><td>${esc(x.type)}</td><td>${chips(x.bE,x.bI)}</td><td class="muted">${esc(x.via)}</td><td>${x.own?'<span class="tag">eigenes</span>':""}</td></tr>`).join("")}</tbody></table></div></details>`).join("");
+  const body=`<div class="note">Grundlage ist der Export der Exchange-Postfachberechtigungen (Get-MailboxPermission / Send-As / Senden im Auftrag, Gruppen mit Mitgliedern). Gezeigt wird je Postfach, <b>wer</b> berechtigt ist, je Gruppe <b>wer Mitglied ist</b> und je Person <b>worauf sie zugreifen kann</b> – direkt oder über Gruppen. Exchange-Systemkonten, SELF und geerbte Standard-Admin-Gruppen sind ${d.cfg.includeSys||ovSys.checked?"enthalten":"ausgeblendet und je Postfach gezählt"}.${s.truncated?" <b>Achtung:</b> Personen×Postfach-Paare wurden gekappt.":""}</div>
+<h2 id="s0">Rahmen</h2>${frame(d,{"Erstellt am":now.toLocaleString("de-DE")})}
+<div class="grid"><div class="card"><b>${fmt(s.mailboxes)}</b>Postfächer</div><div class="card"><b>${fmt(s.cats.personal)}</b>persönliche Postfächer</div><div class="card"><b>${fmt(s.cats.shared+s.cats.resource)}</b>Funktions-/Ressourcenpostfächer</div><div class="card"><b>${fmt(s.groups)}</b>Gruppen mit Mitgliedern</div><div class="card"><b>${fmt(s.persons)}</b>berechtigte Personen</div><div class="card"><b>${fmt(s.faExplicit)}</b>explizite Vollzugriffe</div><div class="card"><b>${fmt(s.saExplicit)}</b>explizite „Senden als“</div><div class="card"><b>${fmt(s.findings)}</b>Prüfhinweise</div></div>
+<h2 id="s1">1. Postfächer → Berechtigte</h2>${mbHtml}<h2 id="s2">2. Gruppen → Mitglieder und Postfächer</h2>${grpHtml}<h2 id="s3">3. Personen → Postfächer (wirksam, zusammengefasst)</h2>${persHtml}`;
+  download(new Blob([reportShell("Exchange-Berechtigungsübersicht – Nachweis",`Postfachberechtigungen · erstellt ${now.toLocaleString("de-DE")}${state.pseudo?" · <b>pseudonymisiert</b>":""}`,'<a href="#s0">Rahmen</a><a href="#s1">Postfächer</a><a href="#s2">Gruppen</a><a href="#s3">Personen</a><a href="#sig">Bestätigung</a>',body)],{type:"text/html;charset=utf-8"}),`Exchange_Berechtigungsuebersicht_${baseName()}_${today()}${state.pseudo?"_pseudonymisiert":""}.html`)});
+btnNachweis.onclick=()=>withBtn(btnNachweis,async()=>{
+  const d=await reportAsync("nachweis",{limit:Number(ovLimit.value)*10||5000}),s=d.stats,now=new Date(),rv={};state.review.forEach(v=>{const k=v.status||"offen";rv[k]=(rv[k]||0)+1});
+  const fnd=d.findings.map(r=>{const x=state.review.get(r._key)||{};return`<tr class="r" data-t="${esc(low(r.title+" "+r.mailbox+" "+r.trustee+" "+r.cat))}"><td><span class="sev sev-${low(r.sev)}">${esc(r.sev)}</span></td><td>${esc(r.cat)}</td><td>${esc(r.title)}</td><td>${esc(r.mailbox)}</td><td>${esc(r.trustee)}</td><td>${chips(r.bE,r.bI)}</td><td>${esc(r.detail)}</td><td><b>${esc(x.status||"offen")}</b>${x.comment?"<br>"+esc(x.comment):""}${x.reviewer?`<br><span class="muted">${esc(x.reviewer)}, ${esc(x.date||"")}</span>`:""}</td></tr>`}).join("");
+  const dl=d.deltaRows?d.deltaRows.map(r=>`<tr class="r" data-t="${esc(low(r.kind+" "+r.mailbox+" "+r.trustee+" "+r.member))}"><td>${esc(r.kind)}</td><td>${esc(r.mailbox)}</td><td>${esc(r.trustee)}</td><td>${r.kind==="Geändert"?chips(r.oldE,r.oldI):""}</td><td>${r.bE||r.bI?chips(r.bE,r.bI):""}</td><td>${esc(r.member)}</td></tr>`).join(""):"";
+  const body=`<div class="note">Dieser Report dokumentiert die Überprüfung der Exchange-Postfachberechtigungen nach Need-to-know und Least Privilege. ${state.pseudo?"<b>Personenbezogene Kennungen sind pseudonymisiert (P-xxxx).</b>":"Der Report enthält personenbezogene Daten und ist entsprechend zu schützen (Zweckbindung, Zugriffsbeschränkung, Löschfrist)."}</div>
+<h2 id="s0">1. Rahmen</h2>${frame(d,{"Erstellt am":now.toLocaleString("de-DE"),"Zweck / Rechtsgrundlage":esc($("rvPurpose").value.trim()||"Regelmäßige Berechtigungsüberprüfung (Art. 32 DSGVO, ISO 27001 A.5.15/A.5.18/A.8.3, BSI ORP.4 / APP.5.2)")})}
+<h2 id="s1">2. Kennzahlen</h2>${kv({"Postfächer":`${fmt(s.mailboxes)} (persönlich ${fmt(s.cats.personal)}, freigegeben ${fmt(s.cats.shared)}, Ressourcen ${fmt(s.cats.resource)}, sonstige ${fmt(s.cats.other)})`,"Berechtigungszeilen":fmt(s.rows),"Principals":Object.entries(s.clsCount).map(([k,v])=>`${(CLS_DE[k]||[k])[0]}: ${fmt(v)}`).join(", "),"Gruppen mit Mitgliedern":fmt(s.groups),"Berechtigte Personen":fmt(s.persons),"Rechte (ohne System/Eigentümer)":Object.entries(s.permCount).map(([k,v])=>`${esc(k)}: ${fmt(v)}`).join(", ")||"–","Prüfhinweise":`${fmt(s.findings)} – `+SEV_ORDER.map(x=>`${x}: ${fmt(s.sev[x]||0)}`).join(", "),"nach Kategorie":Object.entries(s.cat).map(([k,v])=>`${esc(k)}: ${fmt(v)}`).join(", ")||"–","Review-Stand":Object.entries(rv).map(([k,v])=>`${esc(k)}: ${fmt(v)}`).join(", ")||"keine Bewertungen"})}
+<div class="note warnbox"><b>Aussagekraft und Grenzen:</b> Der Export enthält keine Deny-Einträge und keinen Kontostatus (aktiv/deaktiviert, letzte Anmeldung); geerbte Vollzugriffe der Admin-Gruppen sind in Exchange meist per Deny aufgehoben und werden daher nicht als Zugriff gewertet. Gruppenmitgliedschaften entsprechen dem Stand des Exports. Ordnerberechtigungen (Kalender) werden nur ausgewertet, soweit sie im Export enthalten sind.</div>
+<h2 id="s2">3. Prüfhinweise${d.findingsTotal>d.findings.length?` (erste ${fmt(d.findings.length)} von ${fmt(d.findingsTotal)})`:` (${fmt(d.findingsTotal)})`}</h2>${d.findings.length?`<table>${cg([7,9,14,13,13,11,21,12])}<thead><tr><th>Priorität</th><th>Kategorie</th><th>Hinweis</th><th>Postfach</th><th>Berechtigter</th><th>Rechte</th><th>Detail</th><th>Review</th></tr></thead><tbody>${fnd}</tbody></table>`:"<p>Keine Prüfhinweise.</p>"}
+<h2 id="s3">4. Vergleich mit Vorlauf</h2>${d.delta?`<p>${deltaText(d.delta)}</p>${dl?`<table>${cg([12,24,22,15,15,12])}<thead><tr><th>Änderung</th><th>Postfach</th><th>Berechtigter</th><th>vorher</th><th>nachher</th><th>Mitglied</th></tr></thead><tbody>${dl}</tbody></table>`:"<p>Keine Änderungen.</p>"}`:'<p class="muted">Kein Vorlauf geladen. Für die Rezertifizierung den Export des letzten Audits im Tab „Vergleich“ laden.</p>'}`;
+  download(new Blob([reportShell("Nachweis: Audit Exchange-Postfachberechtigungen",`erstellt ${now.toLocaleString("de-DE")}${state.pseudo?" · <b>pseudonymisiert</b>":""}`,'<a href="#s0">Rahmen</a><a href="#s1">Kennzahlen</a><a href="#s2">Prüfhinweise</a><a href="#s3">Vergleich</a><a href="#sig">Bestätigung</a>',body)],{type:"text/html;charset=utf-8"}),`Exchange_Nachweis_${baseName()}_${today()}${state.pseudo?"_pseudonymisiert":""}.html`)});
+VIEWS.forEach(v=>renderTable(v,{rows:[],total:0}));
+</script>
+</body>
+</html>
