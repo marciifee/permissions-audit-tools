@@ -1,0 +1,738 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline' blob:; worker-src blob:; style-src 'unsafe-inline'; img-src data: https://go.cosplaygif.com; connect-src 'none'; form-action 'none'; base-uri 'none'">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>FileServer Permission Audit – WebGUI für den Audit und Nachweis v1.5</title>
+<style>
+:root{--bg:#0a1220;--panel:#111b2c;--panel2:#17253c;--border:#293a55;--text:#e8eef8;--muted:#91a3bb;--accent:#4ea1ff;--accent2:#22d3ee;--ok:#42d99d;--warn:#f5c451;--danger:#ff6b6b;--shadow:0 8px 28px rgba(0,0,0,.22)}
+*{box-sizing:border-box}html,body{margin:0;min-height:100%;background:var(--bg);color:var(--text);font-family:Inter,"Segoe UI",Arial,sans-serif}button,input,select{font:inherit}
+header{position:sticky;top:0;z-index:50;display:flex;align-items:center;justify-content:space-between;gap:16px;padding:14px 20px;background:rgba(10,18,32,.96);border-bottom:1px solid var(--border)}
+.brand{display:flex;gap:11px;align-items:center}.logo{width:42px;height:42px;border-radius:12px;display:grid;place-items:center;font-weight:800;background:linear-gradient(135deg,#1d4ed8,#06b6d4)}h1{font-size:18px;margin:0}.brand small,.small{color:var(--muted);font-size:11px}
+.actions{display:flex;gap:8px;flex-wrap:wrap}button{border:1px solid var(--border);background:var(--panel2);color:var(--text);padding:8px 11px;border-radius:8px;cursor:pointer}button:hover{border-color:var(--accent)}button:disabled{opacity:.45;cursor:not-allowed}.primary{background:#175cd3!important;border-color:#3279dd!important}.danger{background:#5c1d28!important;border-color:#8f2b3b!important}
+.layout{display:grid;grid-template-columns:240px minmax(0,1fr);min-height:calc(100vh - 71px)}aside{padding:14px;background:#0d1626;border-right:1px solid var(--border)}.aside-title{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);padding:7px 8px}.nav{width:100%;display:flex;justify-content:space-between;align-items:center;background:transparent;border-color:transparent;margin:3px 0;text-align:left}.nav.active{background:#172642;border-color:#2d4670}.count{min-width:28px;padding:2px 7px;text-align:center;border-radius:99px;background:#223451;color:#c3ddff;font-size:11px}
+main{padding:18px;min-width:0}.import{border:1px dashed #3d5d86;border-radius:13px;background:linear-gradient(180deg,rgba(24,47,80,.38),rgba(17,27,44,.6));padding:16px;margin-bottom:16px}.import.drag{border-color:var(--accent2)}.import-row{display:flex;align-items:center;gap:9px;flex-wrap:wrap}.import-status{font-size:12px;color:var(--muted);margin-top:9px}.file-list{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}.file-pill{font-size:11px;padding:4px 7px;border-radius:99px;border:1px solid var(--border);background:#132039;color:#c9d9f0}
+.progress-wrap{margin-top:12px;display:none}.progress-head{display:flex;justify-content:space-between;gap:12px;font-size:12px;margin-bottom:6px}.progress{height:9px;background:#1b2a42;border-radius:99px;overflow:hidden}.progress span{display:block;height:100%;width:0;background:linear-gradient(90deg,#2563eb,#22d3ee)}.progress-sub{font-size:11px;color:var(--muted);margin-top:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cards{display:grid;grid-template-columns:repeat(6,minmax(130px,1fr));gap:11px;margin-bottom:15px}.card{background:var(--panel);border:1px solid var(--border);border-radius:11px;padding:13px;box-shadow:var(--shadow)}.card .label{font-size:11px;color:var(--muted)}.card .value{font-size:24px;font-weight:750;margin-top:6px}.card .sub{font-size:10px;color:var(--muted);margin-top:4px}
+.panel{background:var(--panel);border:1px solid var(--border);border-radius:11px;box-shadow:var(--shadow);margin-bottom:15px}.panel-head{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 14px;border-bottom:1px solid var(--border)}.panel-head h2{margin:0;font-size:14px}.panel-body{padding:13px}.filters{display:grid;grid-template-columns:repeat(6,minmax(120px,1fr));gap:9px}.field label{display:block;font-size:10px;color:var(--muted);margin:0 0 4px 2px}.field input,.field select{width:100%;background:#0d1728;color:var(--text);border:1px solid var(--border);border-radius:7px;padding:7px 8px}.field input:focus,.field select:focus{outline:none;border-color:var(--accent)}
+.table-wrap{overflow:auto;max-height:65vh}table{width:100%;border-collapse:separate;border-spacing:0;font-size:11px}th{position:sticky;top:0;z-index:4;text-align:left;white-space:nowrap;background:#19263b;color:#d8e7fb;padding:8px;border-bottom:1px solid var(--border)}td{padding:7px 8px;border-bottom:1px solid #1d2c43;white-space:nowrap;vertical-align:top}tr:hover td{background:#142138}td.wrap{white-space:normal;min-width:220px;max-width:500px;word-break:break-word}.pager{display:flex;align-items:center;justify-content:flex-end;gap:8px;padding:9px 13px;border-top:1px solid var(--border)}.pager .info{margin-right:auto;color:var(--muted);font-size:11px}.pager select{background:#0d1728;color:var(--text);border:1px solid var(--border);padding:5px;border-radius:6px}
+.sev{display:inline-block;padding:3px 6px;border-radius:5px;font-size:10px;font-weight:700}.sev-critical{background:rgba(255,77,109,.18);color:#ff91a6}.sev-high{background:rgba(255,107,107,.15);color:#ffaaaa}.sev-medium{background:rgba(245,196,81,.13);color:#f8d36f}.sev-low{background:rgba(78,161,255,.12);color:#9acbff}.sev-info{background:rgba(145,163,187,.12);color:#ccd6e3}.chip{display:inline-block;padding:2px 6px;border-radius:5px;background:#203450;color:#c9e1ff}.chip.ok{background:rgba(66,217,157,.12);color:#7ce9bd}.chip.bad{background:rgba(255,107,107,.14);color:#ff9f9f}
+.two-col{display:grid;grid-template-columns:1.2fr .8fr;gap:13px}.bar-row{display:grid;grid-template-columns:170px 1fr 60px;gap:7px;align-items:center;margin:7px 0;font-size:11px}.bar{height:9px;border-radius:99px;background:#1b2b44;overflow:hidden}.bar span{display:block;height:100%;border-radius:99px;background:linear-gradient(90deg,#2563eb,#22d3ee)}.kv{display:grid;grid-template-columns:180px 1fr;gap:7px 10px;font-size:11px}.kv div:nth-child(odd){color:var(--muted)}.notice{padding:9px 11px;border:1px solid #35527b;background:#13243d;border-radius:8px;font-size:11px;color:#c9dfff;margin-bottom:12px}.empty{text-align:center;padding:35px 15px;color:var(--muted)}.tab{display:none}.tab.active{display:block}.busy-dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--accent2);animation:pulse 1s infinite}@keyframes pulse{0%,100%{opacity:.35}50%{opacity:1}}
+@media(max-width:1250px){.cards{grid-template-columns:repeat(3,1fr)}.filters{grid-template-columns:repeat(3,1fr)}}@media(max-width:850px){.layout{grid-template-columns:1fr}aside{display:flex;gap:4px;overflow:auto;border-right:0;border-bottom:1px solid var(--border);padding:7px}.aside-title{display:none}.nav{min-width:135px}.cards{grid-template-columns:repeat(2,1fr)}.two-col{grid-template-columns:1fr}.filters{grid-template-columns:repeat(2,1fr)}}@media print{header,aside,.import,.filters,.pager,.noprint{display:none!important}.layout{display:block}main{padding:0}.panel,.card{box-shadow:none}.table-wrap{max-height:none;overflow:visible}th{position:static}}
+.brand-logo{display:grid;place-items:center}.brand-logo img{max-height:42px;display:block}
+.nav-info{font-size:10px;color:var(--muted);padding:10px 8px;line-height:1.5}.file-pill.ok{border-color:#2e7d5a;color:#7ce9bd}.file-pill.bad{border-color:#8f2b3b;color:#ff9f9f}.file-pill.warn{border-color:#7a6220;color:#f8d36f}
+.chip.warn{background:rgba(245,196,81,.13);color:#f8d36f}.pgin{width:70px;background:#0d1728;color:var(--text);border:1px solid var(--border);border-radius:6px;padding:4px}
+.toolbar{display:flex;gap:9px;flex-wrap:wrap;align-items:center;padding:12px 14px;border-bottom:1px solid var(--border)}.toolbar input[type=text],.toolbar input[type=number]{background:#0d1728;color:var(--text);border:1px solid var(--border);border-radius:7px;padding:7px 8px}
+.notes{font-size:11px;color:#c9dfff;padding:8px 14px;border-bottom:1px solid var(--border)}.rv{background:#0d1728;color:var(--text);border:1px solid var(--border);border-radius:5px;padding:3px;font-size:10px}.rvc{background:#0d1728;color:var(--text);border:1px solid var(--border);border-radius:5px;padding:3px;font-size:10px;width:140px;margin-left:3px}
+body.pseudo header{border-bottom:2px solid #22d3ee}.badge{font-size:10px;padding:2px 6px;border-radius:99px;background:#223451;color:#c3ddff}label.tg{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--muted);cursor:pointer}.prose{font-size:12px;line-height:1.55;color:#d3deee}.prose h3{font-size:13px;margin:12px 0 4px}.prose ul{margin:4px 0 8px 18px;padding:0}
+</style>
+</head>
+<body>
+<header>
+  <div class="brand"><div class="brand-logo"><img src="https://go.cosplaygif.com/assets/logo-text-white-cosplayGIF.png" alt="Logo" referrerpolicy="no-referrer"></div><div><h1>FileServer Permission Audit</h1><small>Nachweis-WebGUI v1.5 · DSGVO-konform</small></div></div>
+  <div class="actions"><label class="tg" title="Benutzerkennungen in Anzeige, Exporten und Report durch Pseudonyme (P-xxxx) ersetzen"><input type="checkbox" id="pseudoToggle"> Pseudonymisieren</label><button id="exportMatrix" disabled>Matrix exportieren</button><button id="exportFindings" disabled>Prüfhinweise exportieren</button><button id="exportSoll" disabled>Soll-Ist exportieren</button><button id="exportDeltaA" disabled>Delta neu</button><button id="exportDeltaR" disabled>Delta entfernt</button><button class="primary" id="btnReport" disabled>Nachweis-Report erzeugen</button><button class="primary" id="btnAccessReport" disabled>Berechtigungsübersicht (HTML)</button><button onclick="window.print()">Drucken / PDF</button><button id="resetBtn" class="danger" disabled>Daten löschen</button></div>
+</header>
+<div class="layout">
+<aside>
+  <div class="aside-title">Auswertung</div>
+  <button class="nav active" data-tab="dashboard">Dashboard <span class="count" id="cDash">–</span></button>
+  <button class="nav" data-tab="findings">Prüfhinweise <span class="count" id="cFindings">0</span></button>
+  <button class="nav" data-tab="effective">Wirksame Berechtigung</button>
+  <button class="nav" data-tab="sollist">Soll-Ist-Abgleich</button>
+  <button class="nav" data-tab="delta">Vergleich (Delta)</button>
+  <div class="aside-title">Rohdaten</div>
+  <button class="nav" data-tab="matrix">Permission Matrix <span class="count" id="cMatrix">0</span></button>
+  <button class="nav" data-tab="ntfs">NTFS ACL <span class="count" id="cNtfs">0</span></button>
+  <button class="nav" data-tab="smb">SMB ACL <span class="count" id="cSmb">0</span></button>
+  <button class="nav" data-tab="groups">AD-Gruppen <span class="count" id="cGroups">0</span></button>
+  <button class="nav" data-tab="folders">Ordner / Owner <span class="count" id="cFolders">0</span></button>
+  <button class="nav" data-tab="principals">Principals <span class="count" id="cPrincipals">0</span></button>
+  <button class="nav" data-tab="inheritance">Vererbungsbrüche <span class="count" id="cInheritance">0</span></button>
+  <button class="nav" data-tab="orphans">Verwaiste SIDs <span class="count" id="cOrphans">0</span></button>
+  <button class="nav" data-tab="errors">Fehler / Abdeckung <span class="count" id="cErrors">0</span></button>
+  <div class="aside-title">Nachweis</div>
+  <button class="nav" data-tab="nachweis">Lauf, Integrität, Review <span class="count" id="reviewCount">0</span></button>
+  <button class="nav" data-tab="datenschutz">Datenschutz</button>
+  <div class="nav-info">Die hochgeladenen Daten werden nicht abgespeichert. Im Browser liegt nur ein Zeilenindex; Seiten werden bei Bedarf gelesen. Beim Schließen oder Neuladen der Seite gehen Index und Datei-Zugriff verloren – Review vorher exportieren.</div>
+</aside>
+<main>
+<section class="import" id="dropZone">
+  <div class="import-row"><strong>Audit-Ordner laden</strong><input type="file" id="filesInput" accept=".csv,.sha256,text/csv" multiple hidden><input type="file" id="folderInput" webkitdirectory directory multiple hidden><button class="primary" id="chooseFolder">Audit-Ordner auswählen</button><button id="chooseFiles">Einzelne Dateien</button><span class="small">oder per Drag &amp; Drop · Verarbeitung vollständig lokal · 99_Manifest.sha256 mitladen für Integritätsprüfung</span></div>
+  <div class="import-status"><b><u>Anleitung</u>:</b> <b>1.</b> FileServer-Permission-Audit-v1_3.ps1 auf dem Fileserver (oder einem Admin-Host mit RSAT) ausführen. <b>2.</b> Den Ausgabeordner inkl. 99_Manifest.sha256 hier laden. <br>Die Daten werden nicht in den Arbeitsspeicher geladen: Ein Hintergrund-Worker liest sie einmal blockweise durch, berechnet SHA-256, behält nur einen kompakten Zeilenindex und liest angezeigte Zeilen bei Bedarf direkt aus der Datei nach.</div>
+  <div class="import-status" id="importStatus"></div>
+  <div class="file-list" id="fileList"></div>
+  <div class="progress-wrap" id="progressWrap"><div class="progress-head"><span id="progressTitle">Import …</span><span id="progressPct">0 %</span></div><div class="progress"><span id="progressBar"></span></div><div class="progress-sub" id="progressSub"></div></div>
+</section>
+
+<section class="tab active" id="dashboard">
+<div class="cards">
+  <div class="card"><div class="label">Matrix-Zeilen</div><div class="value" id="kMatrix">0</div><div class="sub">Berechtigungszuweisungen</div></div>
+  <div class="card"><div class="label">Rollen</div><div class="value" id="kRoles">0</div><div class="sub">eindeutige ACL-Principals</div></div>
+  <div class="card"><div class="label">Benutzer / Mitglieder</div><div class="value" id="kUsers">0</div><div class="sub">eindeutige Member</div></div>
+  <div class="card"><div class="label">Prüfhinweise</div><div class="value" id="kFindings">0</div><div class="sub">heuristisch</div></div>
+  <div class="card"><div class="label">Critical</div><div class="value" id="kCritical" style="color:#ff91a6">0</div><div class="sub">breite Schreibrechte</div></div>
+  <div class="card"><div class="label">High</div><div class="value" id="kHigh" style="color:#ffaaaa">0</div><div class="sub">Least-Privilege-Verstöße u. a.</div></div>
+</div>
+<div class="two-col">
+  <div class="panel"><div class="panel-head"><h2>Häufigste Rollen</h2></div><div class="panel-body" id="roleBars"><div class="empty">Noch keine Daten geladen.</div></div></div>
+  <div class="panel"><div class="panel-head"><h2>Audit-Status</h2></div><div class="panel-body"><div class="kv" id="auditStatus"></div></div></div>
+</div>
+<div class="two-col">
+  <div class="panel"><div class="panel-head"><h2>Rechteklassen in der Matrix</h2></div><div class="panel-body" id="classBars"><div class="empty">–</div></div></div>
+  <div class="panel"><div class="panel-head"><h2>Prüfhinweise nach Kategorie</h2></div><div class="panel-body" id="catBars"><div class="empty">–</div></div></div>
+</div>
+<div class="panel"><div class="panel-head"><h2>Wichtigste Prüfhinweise</h2><button class="noprint" onclick="showTab('findings')">Alle anzeigen</button></div><div class="panel-body" id="topFindings"><div class="empty">Noch keine Daten geladen.</div></div></div>
+<div class="panel"><div class="panel-head"><h2>Einstellungen der Heuristik</h2></div><div class="toolbar"><label class="small">Inaktiv ab (Tage) <input type="number" id="inactiveDays" value="90" min="1" style="width:70px"></label><label class="tg"><input type="checkbox" id="sollIgnoreAdmin" checked> Admin/System im Soll-Abgleich ignorieren</label><label class="tg"><input type="checkbox" id="sollRequire"> Pfade ohne Soll-Eintrag als Abweichung melden</label><button id="btnSettings">Übernehmen &amp; Prüfhinweise neu berechnen</button></div></div>
+</section>
+
+<section class="tab" id="findings"><div class="notice">Prüfhinweise sind heuristische Review-Hinweise (keine vollständige Windows-Effective-Access-Berechnung – dafür Tab „Wirksame Berechtigung“). Jede Zeile kann mit Status und Kommentar bewertet werden; Review über „Lauf, Integrität, Review“ exportieren.</div><div class="panel"><div class="panel-head"><h2>Automatische Prüfhinweise</h2><span class="small" id="findingsInfo"></span></div><div class="panel-body"><div class="filters"><div class="field"><label>Priorität</label><select id="fSeverity"><option value="">Alle</option><option>Critical</option><option>High</option><option>Medium</option><option>Low</option><option>Info</option></select></div><div class="field"><label>Kategorie</label><select id="fCategory"><option value="">Alle</option></select></div><div class="field"><label>Freitext</label><input id="fSearch" placeholder="Pfad, Rolle, Benutzer …"></div></div></div><div class="table-wrap"><table id="findingsTable"></table></div><div class="pager" id="findingsPager"></div></div></section>
+
+<section class="tab" id="effective"><div class="notice">Berechnet, wer auf einen Ordner wirksam zugreifen kann: NTFS-ACEs entlang der Vererbungskette (bis zur geschützten ACL bzw. Root, inkl. „gilt für“ und Deny-Vorrang, Bit-genau nach Windows-Auswertungsreihenfolge) geschnitten mit der SMB-Share-ACL. Breite Identitäten (Everyone, Authenticated Users, Domain Users, BUILTIN\Users) werden allen Principals zugerechnet.</div><div class="panel"><div class="panel-head"><h2>Wirksame Berechtigung je Ordner</h2><span class="small" id="effStatus"></span></div><div class="toolbar"><input type="text" id="effPath" placeholder="\\server\share\Abteilung\Ordner" style="flex:1;min-width:320px"><button class="primary" id="effRun" disabled>Berechnen</button><button id="effExport" disabled>Als CSV</button></div><div class="notes" id="effNotes"></div><div class="table-wrap"><table id="effTable"></table></div></div></section>
+
+<section class="tab" id="sollist"><div class="notice">Need-to-know lässt sich nur gegen ein dokumentiertes Soll (Berechtigungskonzept) nachweisen. Soll-CSV: <code>Path;Role;MaxRights;DataOwner;Comment</code> – Pfad gilt für alle Unterordner (längster Präfix gewinnt), Rolle <code>*</code> = jede Rolle, MaxRights: None, Read, ReadWrite, Modify, FullControl.</div><div class="panel"><div class="panel-head"><h2>Soll-Ist-Abgleich</h2><span class="small" id="sollInfo"></span></div><div class="toolbar"><input type="file" id="sollInput" accept=".csv" hidden><button class="primary" onclick="document.getElementById('sollInput').click()">Soll-Datei laden</button><button id="btnSollTemplate">Vorlage herunterladen</button><button id="btnSollRun" disabled>Abgleich starten</button><span class="small" id="sollStatus"></span></div><div class="panel-body"><div class="filters"><div class="field"><label>Freitext</label><input id="sollSearch" placeholder="Pfad, Rolle, Abweichung …"></div></div></div><div class="table-wrap"><table id="sollTable"></table></div><div class="pager" id="sollPager"></div></div></section>
+
+<section class="tab" id="delta"><div class="notice">Vergleich mit einem früheren Lauf: Die <code>01_Permission_Matrix.csv</code> des Vorlaufs wird ebenfalls nur indiziert (Hash je Zeile aus Pfad, Ebene, Rolle, Mitglied, Zugriffstyp, Rechteklasse, Vererbung). Ergebnis: neu hinzugekommene und entfernte Berechtigungszeilen.</div><div class="panel"><div class="panel-head"><h2>Vergleich zweier Läufe</h2><span class="small" id="deltaStatus"></span></div><div class="toolbar"><input type="file" id="compareInput" accept=".csv" hidden><button class="primary" onclick="document.getElementById('compareInput').click()">Matrix des Vorlaufs laden</button><button id="btnDelta" disabled>Delta berechnen</button></div></div>
+<div class="panel"><div class="panel-head"><h2>Neu (nur im aktuellen Lauf)</h2><span class="small" id="deltaAddedInfo"></span></div><div class="panel-body"><div class="filters"><div class="field"><label>Freitext</label><input id="deltaAddedSearch"></div></div></div><div class="table-wrap"><table id="deltaAddedTable"></table></div><div class="pager" id="deltaAddedPager"></div></div>
+<div class="panel"><div class="panel-head"><h2>Entfernt (nur im Vorlauf)</h2><span class="small" id="deltaRemovedInfo"></span></div><div class="panel-body"><div class="filters"><div class="field"><label>Freitext</label><input id="deltaRemovedSearch"></div></div></div><div class="table-wrap"><table id="deltaRemovedTable"></table></div><div class="pager" id="deltaRemovedPager"></div></div></section>
+
+<section class="tab" id="matrix"><div class="panel"><div class="panel-head"><h2>Permission Matrix</h2><span class="small" id="matrixInfo"></span></div><div class="panel-body"><div class="filters">
+<div class="field"><label>Freitext (Datei-Scan)</label><input id="mSearch" placeholder="Pfad, Rolle, Benutzer …"></div><div class="field"><label>Pfad beginnt mit</label><input id="mPath" placeholder="\\server\share\…"></div><div class="field"><label>Drive</label><select id="mDrive"><option value="">Alle</option></select></div><div class="field"><label>Server</label><select id="mServer"><option value="">Alle</option></select></div><div class="field"><label>Share</label><select id="mShare"><option value="">Alle</option></select></div><div class="field"><label>Ebene</label><select id="mLayer"><option value="">Alle</option><option>SMB</option><option>NTFS</option></select></div><div class="field"><label>Access</label><select id="mAccess"><option value="">Alle</option><option>Allow</option><option>Deny</option></select></div><div class="field"><label>Rolle</label><select id="mRole"><option value="">Alle</option></select></div><div class="field"><label>Rollenklasse</label><select id="mRoleClass"><option value="">Alle</option></select></div><div class="field"><label>Benutzer / Mitglied</label><input id="mMember" placeholder="Benutzer"></div><div class="field"><label>Rechte enthalten</label><input id="mRights" placeholder="Modify, FullControl …"></div><div class="field"><label>Rechteklasse</label><select id="mRClass"><option value="">Alle</option></select></div><div class="field"><label>Direktzuweisung</label><select id="mDirect"><option value="">Alle</option><option value="true">Ja</option><option value="false">Nein</option></select></div><div class="field"><label>Vererbungsbruch</label><select id="mBroken"><option value="">Alle</option><option value="true">Ja</option><option value="false">Nein</option></select></div><div class="field"><label>Konto aktiv</label><select id="mEnabled"><option value="">Alle</option><option value="true">Aktiv</option><option value="false">Deaktiviert</option></select></div>
+</div></div><div class="table-wrap"><table id="matrixTable"></table></div><div class="pager" id="matrixPager"></div></div></section>
+<section class="tab" id="ntfs"><div class="panel"><div class="panel-head"><h2>NTFS ACL</h2><span class="small" id="ntfsInfo"></span></div><div class="panel-body"><div class="filters"><div class="field"><label>Freitext (Datei-Scan)</label><input id="ntfsSearch" placeholder="Pfad, Identity, Rechte …"></div></div></div><div class="table-wrap"><table id="ntfsTable"></table></div><div class="pager" id="ntfsPager"></div></div></section>
+<section class="tab" id="smb"><div class="panel"><div class="panel-head"><h2>SMB Share ACL</h2><span class="small" id="smbInfo"></span></div><div class="panel-body"><div class="filters"><div class="field"><label>Freitext (Datei-Scan)</label><input id="smbSearch" placeholder="Share, Identity …"></div></div></div><div class="table-wrap"><table id="smbTable"></table></div><div class="pager" id="smbPager"></div></div></section>
+<section class="tab" id="groups"><div class="panel"><div class="panel-head"><h2>AD-Gruppenauflösung</h2><span class="small" id="groupsInfo"></span></div><div class="panel-body"><div class="filters"><div class="field"><label>Freitext (Datei-Scan)</label><input id="groupsSearch" placeholder="Gruppe, Mitglied, SID …"></div></div></div><div class="table-wrap"><table id="groupsTable"></table></div><div class="pager" id="groupsPager"></div></div></section>
+<section class="tab" id="folders"><div class="notice">Alle vom Audit geprüften Ordner – auch ohne explizite ACEs. Dient dem Vollständigkeitsnachweis (AclStatus), der Owner-Bewertung (OwnerRisk) und als Ausgangspunkt für „Wirksame Berechtigung“.</div><div class="panel"><div class="panel-head"><h2>Ordnerindex und Owner</h2><span class="small" id="foldersInfo"></span></div><div class="panel-body"><div class="filters"><div class="field"><label>Freitext (Datei-Scan)</label><input id="foldersSearch" placeholder="Pfad, Owner …"></div></div></div><div class="table-wrap"><table id="foldersTable"></table></div><div class="pager" id="foldersPager"></div></div></section>
+<section class="tab" id="principals"><div class="panel"><div class="panel-head"><h2>Aufgelöste Principals</h2><span class="small" id="principalsInfo"></span></div><div class="panel-body"><div class="filters"><div class="field"><label>Freitext (Datei-Scan)</label><input id="principalsSearch" placeholder="Identity, Typ, Klasse …"></div></div></div><div class="table-wrap"><table id="principalsTable"></table></div><div class="pager" id="principalsPager"></div></div></section>
+<section class="tab" id="inheritance"><div class="panel"><div class="panel-head"><h2>Vererbungsbrüche</h2><span class="small" id="inheritanceInfo"></span></div><div class="panel-body"><div class="filters"><div class="field"><label>Freitext (Datei-Scan)</label><input id="inheritanceSearch" placeholder="Pfad …"></div></div></div><div class="table-wrap"><table id="inheritanceTable"></table></div><div class="pager" id="inheritancePager"></div></div></section>
+<section class="tab" id="orphans"><div class="panel"><div class="panel-head"><h2>Verwaiste SIDs</h2><span class="small" id="orphansInfo"></span></div><div class="panel-body"><div class="filters"><div class="field"><label>Freitext (Datei-Scan)</label><input id="orphansSearch" placeholder="Pfad, SID …"></div></div></div><div class="table-wrap"><table id="orphansTable"></table></div><div class="pager" id="orphansPager"></div></div></section>
+<section class="tab" id="errors"><div class="notice">Einträge mit Operation <b>Enumerate</b> bedeuten: Der Teilbaum fehlt im Audit. Der Nachweis ist dann nur mit dokumentierter Begründung vollständig.</div><div class="panel"><div class="panel-head"><h2>Audit-Fehler und Abdeckungslücken</h2><span class="small" id="errorsInfo"></span></div><div class="panel-body"><div class="filters"><div class="field"><label>Freitext (Datei-Scan)</label><input id="errorsSearch" placeholder="Ziel, Operation, Fehler …"></div></div></div><div class="table-wrap"><table id="errorsTable"></table></div><div class="pager" id="errorsPager"></div></div></section>
+
+<section class="tab" id="nachweis">
+<div class="panel"><div class="panel-head"><h2>Review-Rahmen</h2></div><div class="toolbar"><input type="text" id="rvReviewer" placeholder="Reviewer (Name)" style="min-width:200px"><input type="text" id="rvResponsible" placeholder="Verantwortlicher (Organisation / Rolle)" style="min-width:260px"><input type="text" id="rvPurpose" placeholder="Zweck / Rechtsgrundlage (optional)" style="flex:1;min-width:260px"><label class="small">Max. Zeilen im Report <input type="number" id="reportLimit" value="5000" min="100" style="width:80px"></label><input type="file" id="reviewInput" accept=".json" hidden><button id="btnReviewExport">Review speichern (JSON)</button><button onclick="document.getElementById('reviewInput').click()">Review laden</button></div><div class="notes">Bewertungen werden nur im Arbeitsspeicher gehalten. Für die Rezertifizierung: Review speichern, beim nächsten Lauf wieder laden – die Schlüssel sind laufübergreifend stabil (Pfad + Rolle + Art des Hinweises).</div></div>
+<div class="panel"><div class="panel-head"><h2>Berechtigungsübersicht (Nachweis-Report 2)</h2></div><div class="toolbar"><input type="text" id="accPrefix" placeholder="Pfadfilter: \\server\share\Bereich (leer = alles)" style="flex:1;min-width:280px"><select id="accLayer" class="pgin" style="width:auto"><option value="">SMB + NTFS</option><option value="NTFS">nur NTFS</option><option value="SMB">nur SMB</option></select><label class="tg"><input type="checkbox" id="accUsers" checked> Abschnitt Benutzer → Zugriff</label><label class="small">max. Zeilen je Rolle/Benutzer <input type="number" id="accMemberLimit" value="300" min="20" style="width:70px"></label><label class="small">Limit Benutzer×Ordner (Tsd.) <input type="number" id="accMaxPairs" value="1500" min="100" style="width:80px"></label></div><div class="notes">Erzeugt einen eigenständigen HTML-Report: Freigaben → Ordner → Rollen/Rechte, Rollen → aufgelöste Mitglieder, Benutzer → zusammengefasste Zugriffsbereiche. Mit Suchfeld, auf-/zuklappbaren Abschnitten und Druckansicht. Große Umgebungen: Pfadfilter je Bereich nutzen (z. B. ein Report je Fachbereich/Data Owner).</div></div>
+<div class="panel"><div class="panel-head"><h2>Audit-Lauf (09_RunInfo.csv)</h2></div><div class="panel-body" id="runInfoBox"></div></div>
+<div class="panel"><div class="panel-head"><h2>Integrität der Eingabedateien</h2></div><div class="panel-body" id="integrityBox"></div></div>
+<div class="panel"><div class="panel-head"><h2>Abdeckung je Ziel (08_Summary.csv)</h2></div><div class="table-wrap" id="summaryBox"></div></div>
+</section>
+
+<section class="tab" id="datenschutz"><div class="panel"><div class="panel-head"><h2>Datenschutz (DSGVO) – Hinweise für Betreiber und Reviewer</h2></div><div class="panel-body prose">
+<h3>Was diese Anwendung verarbeitet</h3><p>Die Audit-CSVs enthalten personenbezogene Daten: Benutzerkennungen, Anzeigenamen, SIDs, Kontostatus, letzte Anmeldung, Gruppenmitgliedschaften und der Name des ausführenden Administrators. Rechtsgrundlage ist in der Regel Art. 6 Abs. 1 lit. c/f DSGVO i. V. m. Art. 32 DSGVO (Sicherheit der Verarbeitung, Berechtigungsmanagement).</p>
+<h3>Technische Maßnahmen dieser WebGUI</h3><ul><li><b>Keine Übertragung von Audit-Daten:</b> Content-Security-Policy <code>connect-src 'none'</code> – Skripte können keine Verbindungen aufbauen, keine externen Skripte/Schriftarten, kein Tracking. Einzige externe Ressource ist das Firmenlogo im Kopf (ein Bild-Request an den eigenen Webserver ohne Referrer, ohne Audit-Daten); wer das vermeiden will, bettet das Logo als Data-URI ein.</li><li><b>Keine Persistenz:</b> kein localStorage, kein IndexedDB, keine Cookies. Beim Schließen des Tabs ist alles gelöscht; „Daten löschen“ leert den Speicher sofort.</li><li><b>Datensparsamkeit:</b> Dateien werden nicht in den Arbeitsspeicher kopiert, nur ein Zeilenindex; Seiten werden bei Bedarf gelesen.</li><li><b>Pseudonymisierung:</b> Schalter oben rechts ersetzt Benutzerkennungen, Namen und SIDs in Anzeige, Exporten und Report durch stabile Pseudonyme (P-xxxx). Rollen/Gruppen bleiben lesbar. Für Berichte an Dritte (Management, Auditoren, Betriebsrat) empfohlen.</li><li><b>Integrität:</b> SHA-256 jeder Datei wird gegen <code>99_Manifest.sha256</code> geprüft.</li></ul>
+<h3>Organisatorische Pflichten (nicht durch das Tool abgedeckt)</h3><ul><li>Verarbeitungstätigkeit „Berechtigungsaudit“ ins Verzeichnis nach Art. 30 DSGVO aufnehmen; Zweckbindung (nur Berechtigungsprüfung).</li><li>Ausgabeordner des Skripts zugriffsbeschränkt ablegen (nur IT-Sicherheit/Audit), Löschfrist festlegen (z. B. nach Abschluss der Rezertifizierung bzw. gesetzliche Aufbewahrung des Nachweises).</li><li>Reports mit Klarnamen nur an Berechtigte; Beschäftigtenvertretung nach § 87 Abs. 1 Nr. 6 BetrVG einbeziehen, wenn Verhaltens-/Leistungsdaten (z. B. letzte Anmeldung) ausgewertet werden.</li><li>Das Audit-Konto und die Ausführung (RunInfo) sind selbst protokollierungspflichtig – ExecutedBy wird im Report bei Pseudonymisierung ebenfalls verborgen.</li></ul>
+<h3>Was der Nachweis enthält</h3><p>Lauf-Metadaten und Skript-Hash, Integritätsprüfung, Abdeckung je Ziel, Kennzahlen, Prüfhinweise mit Review-Status, Soll-Ist-Abweichungen, Delta zum Vorlauf, Stichprobe „Wirksame Berechtigung“ und Unterschriftsfelder. Der Report ist eine eigenständige HTML-Datei (druckbar als PDF).</p>
+</div></div></section>
+</main>
+</div>
+
+<script id="workerCode" type="javascript/worker">
+"use strict";
+/* ============================================================================
+   Streaming-Worker v3 – keine CSV-Zeilen im RAM.
+   Datei bleibt auf dem Datenträger; im Speicher: Zeilenindex (1 Offset / 64 Zeilen),
+   Header, Optionen, Kennzahlen, gepackte Prüfhinweise, Filter-Trefferlisten (Uint32).
+   ============================================================================ */
+const CHUNK=4*1024*1024, AE=64, MAX_SPAN=8*1024*1024, MAX_OPTIONS=5000;
+const datasets={}, options={}, stats={}, queryCache={}; let latestQueryToken={};
+const FILE_TYPES={"01_permission_matrix.csv":"matrix","02_ntfs_acl.csv":"ntfs","03_smb_share_acl.csv":"smb","04_ad_group_expansion.csv":"groups","05_inheritance_breaks.csv":"inheritance","06_orphaned_sids.csv":"orphans","07_errors.csv":"errors","08_summary.csv":"summary","09_runinfo.csv":"runinfo","10_folder_index.csv":"folders","11_principals.csv":"principals"};
+const FINDING_HEADERS=["Severity","Category","Title","Drive","FileServer","ShareName","Path","Role","UserOrMember","Rights","RightsClass","AccessType","Detail","_key"];
+const SEVS=["Critical","High","Medium","Low","Info"], DSN=["matrix","inheritance","orphans","errors","folders","smb"], DSC={matrix:0,inheritance:1,orphans:2,errors:3,folders:4,smb:5};
+let settings={inactiveDays:90,ignoreAdminInSoll:true,requireSoll:false};
+function low(v){return String(v??"").trim().toLowerCase()} function boolVal(v){v=low(v);if(["true","wahr","yes","ja","1"].includes(v))return true;if(["false","falsch","no","nein","0"].includes(v))return false;return null}
+function colMap(h){const m={};h.forEach((x,i)=>m[x]=i);return m} function get(r,m,k){const i=m[k];return i===undefined?"":(r[i]??"")}
+
+/* ---------- typisierte, wachsende Arrays ---------- */
+class GrowArr{constructor(T,n=4096){this.T=T;this.a=new T(n);this.n=0}push(v){if(this.n===this.a.length){const b=new this.T(this.a.length*2);b.set(this.a);this.a=b}this.a[this.n++]=v}get(i){return this.a[i]}slice(s,e){return Array.from(this.a.subarray(s,Math.min(e,this.n)))}view(){return this.a.subarray(0,this.n)}get bytes(){return this.a.byteLength}}
+
+/* ---------- SHA-256 (inkrementell, für Manifest-Prüfung) ---------- */
+const K256=new Uint32Array([0x428a2f98,0x71374491,0xb5c0fbcf,0xe9b5dba5,0x3956c25b,0x59f111f1,0x923f82a4,0xab1c5ed5,0xd807aa98,0x12835b01,0x243185be,0x550c7dc3,0x72be5d74,0x80deb1fe,0x9bdc06a7,0xc19bf174,0xe49b69c1,0xefbe4786,0x0fc19dc6,0x240ca1cc,0x2de92c6f,0x4a7484aa,0x5cb0a9dc,0x76f988da,0x983e5152,0xa831c66d,0xb00327c8,0xbf597fc7,0xc6e00bf3,0xd5a79147,0x06ca6351,0x14292967,0x27b70a85,0x2e1b2138,0x4d2c6dfc,0x53380d13,0x650a7354,0x766a0abb,0x81c2c92e,0x92722c85,0xa2bfe8a1,0xa81a664b,0xc24b8b70,0xc76c51a3,0xd192e819,0xd6990624,0xf40e3585,0x106aa070,0x19a4c116,0x1e376c08,0x2748774c,0x34b0bcb5,0x391c0cb3,0x4ed8aa4a,0x5b9cca4f,0x682e6ff3,0x748f82ee,0x78a5636f,0x84c87814,0x8cc70208,0x90befffa,0xa4506ceb,0xbef9a3f7,0xc67178f2]);
+class Sha256{constructor(){this.h=new Uint32Array([0x6a09e667,0xbb67ae85,0x3c6ef372,0xa54ff53a,0x510e527f,0x9b05688c,0x1f83d9ab,0x5be0cd19]);this.buf=new Uint8Array(64);this.bl=0;this.len=0;this.w=new Uint32Array(64)}
+  block(b,o){const w=this.w,h=this.h;for(let i=0;i<16;i++,o+=4)w[i]=(b[o]<<24)|(b[o+1]<<16)|(b[o+2]<<8)|b[o+3];for(let i=16;i<64;i++){const x=w[i-15],y=w[i-2];w[i]=(w[i-16]+(((x>>>7)|(x<<25))^((x>>>18)|(x<<14))^(x>>>3))+w[i-7]+(((y>>>17)|(y<<15))^((y>>>19)|(y<<13))^(y>>>10)))|0}
+    let a=h[0],b2=h[1],c=h[2],d=h[3],e=h[4],f=h[5],g=h[6],hh=h[7];
+    for(let i=0;i<64;i++){const t1=(hh+(((e>>>6)|(e<<26))^((e>>>11)|(e<<21))^((e>>>25)|(e<<7)))+((e&f)^(~e&g))+K256[i]+w[i])|0,t2=((((a>>>2)|(a<<30))^((a>>>13)|(a<<19))^((a>>>22)|(a<<10)))+((a&b2)^(a&c)^(b2&c)))|0;hh=g;g=f;f=e;e=(d+t1)|0;d=c;c=b2;b2=a;a=(t1+t2)|0}
+    h[0]=(h[0]+a)|0;h[1]=(h[1]+b2)|0;h[2]=(h[2]+c)|0;h[3]=(h[3]+d)|0;h[4]=(h[4]+e)|0;h[5]=(h[5]+f)|0;h[6]=(h[6]+g)|0;h[7]=(h[7]+hh)|0}
+  update(u8){this.len+=u8.length;let i=0;if(this.bl){const n=Math.min(64-this.bl,u8.length);this.buf.set(u8.subarray(0,n),this.bl);this.bl+=n;i=n;if(this.bl<64)return;this.block(this.buf,0);this.bl=0}for(;i+64<=u8.length;i+=64)this.block(u8,i);if(i<u8.length){this.buf.set(u8.subarray(i),0);this.bl=u8.length-i}}
+  hex(){const pad=new Uint8Array(((this.bl<56)?64:128));pad.set(this.buf.subarray(0,this.bl));pad[this.bl]=0x80;const bits=this.len*8;const hi=Math.floor(bits/4294967296),lo=bits>>>0;const L=pad.length;pad[L-8]=hi>>>24;pad[L-7]=hi>>>16;pad[L-6]=hi>>>8;pad[L-5]=hi;pad[L-4]=lo>>>24;pad[L-3]=lo>>>16;pad[L-2]=lo>>>8;pad[L-1]=lo;for(let o=0;o<L;o+=64)this.block(pad,o);return Array.from(this.h).map(x=>(x>>>0).toString(16).padStart(8,"0")).join("")}}
+
+/* ---------- CSV-Tokenizer (zählt UTF-8-Bytes für Offsets) ---------- */
+function makeTokenizer(delim,onRow,startByte){
+  const dc=delim.charCodeAt(0);let field="",row=[],quoted=false,pending=false,bytes=startByte,rowStart=startByte;
+  const emit=()=>{const s=rowStart;rowStart=bytes;const r=row;row=[];onRow(r,s,bytes)};
+  return{feed(text,more){const L=text.length;let fs=0;for(let i=0;i<L;i++){const c=text.charCodeAt(i);bytes+=c<0x80?1:c<0x800?2:(c>=0xD800&&c<0xE000)?2:3;
+      if(pending){if(c===34){field+='"';pending=false;fs=i+1;continue}quoted=false;pending=false}
+      if(quoted){if(c===34){field+=text.slice(fs,i);if(i+1<L){if(text.charCodeAt(i+1)===34){field+='"';i++;bytes+=1;fs=i+1}else{quoted=false;fs=i+1}}else{fs=i+1;if(more)pending=true;else quoted=false}}}
+      else{if(c===34){field+=text.slice(fs,i);quoted=true;fs=i+1}else if(c===dc){field+=text.slice(fs,i);row.push(field);field="";fs=i+1}else if(c===10){field+=text.slice(fs,i);if(field.length&&field.charCodeAt(field.length-1)===13)field=field.slice(0,-1);row.push(field);field="";fs=i+1;emit()}}}
+      if(fs<L)field+=text.slice(fs)},
+    end(){pending=false;quoted=false;if(field!==""||row.length){if(field.length&&field.charCodeAt(field.length-1)===13)field=field.slice(0,-1);row.push(field);field="";emit()}}};
+}
+const nonEmpty=r=>{for(let i=0;i<r.length;i++)if(r[i]!=="")return true;return false};
+function makeStream(file,start,end,delim,onRow,hash){
+  const fr=new FileReaderSync(),dec=new TextDecoder("utf-8",{ignoreBOM:true}),tok=makeTokenizer(delim,onRow,start);let off=start,done=false;
+  return{step(){if(done)return false;const e=Math.min(off+CHUNK,end),ab=fr.readAsArrayBuffer(file.slice(off,e)),more=e<end;if(hash)hash.update(new Uint8Array(ab));tok.feed(dec.decode(ab,{stream:more}),more);off=e;if(!more){const t=dec.decode();if(t)tok.feed(t,false);tok.end();done=true}return!done},get offset(){return off}};
+}
+function parseSlice(file,s,e,delim,onRow){const fr=new FileReaderSync(),text=new TextDecoder("utf-8",{ignoreBOM:true}).decode(fr.readAsArrayBuffer(file.slice(s,e))),tok=makeTokenizer(delim,onRow,s);tok.feed(text,false);tok.end()}
+function detectDelimiter(file){const fr=new FileReaderSync(),ab=fr.readAsArrayBuffer(file.slice(0,Math.min(65536,file.size))),t=new TextDecoder("utf-8").decode(ab).replace(/^\uFEFF/,""),line=t.split(/\r?\n/).find(x=>x.trim())||"",c={";":(line.match(/;/g)||[]).length,",":(line.match(/,/g)||[]).length,"\t":(line.match(/\t/g)||[]).length};return Object.entries(c).sort((a,b)=>b[1]-a[1])[0][0]||";"}
+
+/* ---------- Zeilen nachlesen ---------- */
+function blockEnd(d,b){return b+1<d.anchors.n?d.anchors.get(b+1):d.file.size}
+function readRange(d,from,to){to=Math.min(to,d.count);if(from>=to)return[];const b0=Math.floor(from/AE),b1=Math.floor((to-1)/AE),out=[];let idx=b0*AE;parseSlice(d.file,d.anchors.get(b0),blockEnd(d,b1),d.delim,r=>{if(!nonEmpty(r))return;if(idx>=from&&idx<to)out.push(r);idx++});return out}
+function readByIndices(d,idxs){const out=new Array(idxs.length);let p=0;while(p<idxs.length){const b0=Math.floor(idxs[p]/AE),s=d.anchors.get(b0);let bEnd=b0,q=p;while(q+1<idxs.length){const nb=Math.floor(idxs[q+1]/AE);if(nb>bEnd&&blockEnd(d,nb)-s>MAX_SPAN)break;bEnd=Math.max(bEnd,nb);q++}let idx=b0*AE,k=p;parseSlice(d.file,s,blockEnd(d,bEnd),d.delim,r=>{if(k>q||!nonEmpty(r))return;while(k<=q&&idxs[k]===idx)out[k++]=r;idx++});for(;k<=q;k++)out[k]=out[k]||[];p=q+1}return out}
+
+/* ---------- Rechte / Klassen ---------- */
+const RIGHT_NAMES={fullcontrol:0x1F01FF,modify:0x301BF,readandexecute:0x200A9,read:0x20089,write:0x116,listdirectory:1,readdata:1,writedata:2,createfiles:2,appenddata:4,createdirectories:4,readextendedattributes:8,writeextendedattributes:0x10,executefile:0x20,traverse:0x20,deletesubdirectoriesandfiles:0x40,readattributes:0x80,writeattributes:0x100,delete:0x10000,readpermissions:0x20000,changepermissions:0x40000,takeownership:0x80000,synchronize:0x100000,
+  vollzugriff:0x1F01FF,"ändern":0x301BF,lesen:0x20089,schreiben:0x116,"lesen, ausführen":0x200A9,change:0x301BF,full:0x1F01FF};
+function maskFromText(t){t=String(t||"").trim();if(!t)return 0;if(/^-?\d+$/.test(t)){let raw=Number(t);if(raw<0)raw+=4294967296;let m=raw&0x0FFFFFFF;if(raw&0x80000000)m|=0x120089;if(raw&0x40000000)m|=0x120116;if(raw&0x20000000)m|=0x1200A0;if(raw&0x10000000)m|=0x1F01FF;return m>>>0}if(/^0x/i.test(t))return parseInt(t,16)>>>0;let m=0;for(const p of t.split(",")){const k=low(p);if(RIGHT_NAMES[k]!==undefined)m|=RIGHT_NAMES[k]}return m>>>0}
+function rowMask(r,m){const v=get(r,m,"RightsMask");if(v!==""&&/^\d+$/.test(v))return Number(v);return maskFromText(get(r,m,"Rights")||get(r,m,"AccessRight"))}
+function classOf(mask){const M=mask&0x1F01FF;if((M&0x1F01FF)===0x1F01FF)return"FullControl";if((M&0x301BF)===0x301BF)return"Modify";const w=(M&(0x116|0x10000|0x40))!==0,rd=(M&0x20089)===0x20089;if(w&&rd)return"ReadWrite";if(w)return"WriteOnly";if((M&0x200A9)===0x200A9)return"ReadExecute";if(rd)return"Read";if(M&(0x40000|0x80000))return"SpecialAclControl";if(M===0)return"None";return"Special"}
+const CLASS_RANK={None:0,Read:1,ReadExecute:1,Special:1,WriteOnly:2,ReadWrite:2,Modify:3,SpecialAclControl:4,FullControl:4};
+function rowClass(r,m){const c=get(r,m,"RightsClass");return c||classOf(rowMask(r,m))}
+const BROAD_RX=/^(everyone|jeder)$|\\(everyone|jeder|authenticated users|authentifizierte benutzer|users|benutzer|domain users|domänen-benutzer|domain computers|domänencomputer|guests|gäste|interactive|interaktiv|network|netzwerk)$/i;
+const ADMIN_RX=/\\(administrators|administratoren|administrator|domain admins|domänen-admins|enterprise admins|organisations-admins|schema admins|schema-admins|backup operators|sicherungs-operatoren|server operators|server-operatoren)$/i;
+const SYSTEM_RX=/^(nt authority|nt-autorität)\\(system|local service|network service|lokaler dienst|netzwerkdienst)$|^(creator owner|ersteller-besitzer)$|\\(creator owner|ersteller-besitzer|trustedinstaller)$|^nt service\\/i;
+function identClass(identity,cls,sid){if(cls)return cls;const s=String(sid||"");if(["S-1-1-0","S-1-5-11","S-1-5-32-545","S-1-5-32-546","S-1-5-4","S-1-5-2"].includes(s)||/^S-1-5-21-\d+-\d+-\d+-(513|514|515)$/.test(s))return"Broad";if(["S-1-5-32-544","S-1-5-32-548","S-1-5-32-549","S-1-5-32-550","S-1-5-32-551"].includes(s)||/^S-1-5-21-\d+-\d+-\d+-(500|512|518|519)$/.test(s))return"Admin";if(["S-1-5-18","S-1-5-19","S-1-5-20","S-1-3-0","S-1-3-1"].includes(s)||/^S-1-5-80-/.test(s))return"System";const id=String(identity||"");if(BROAD_RX.test(id))return"Broad";if(ADMIN_RX.test(id))return"Admin";if(SYSTEM_RX.test(id))return"System";return"Standard"}
+function roleClassOf(r,m){return identClass(get(r,m,"RoleIdentity")||get(r,m,"Role")||get(r,m,"Identity"),get(r,m,"RoleClass")||get(r,m,"IdentityClass"),get(r,m,"RoleSID")||get(r,m,"SID"))}
+function memberClassOf(r,m){return identClass(get(r,m,"UserOrMember"),get(r,m,"MemberClass"),get(r,m,"MemberSID"))}
+
+/* ---------- Prüfhinweise (gepackt: Typ, Quelle, Zeile) ---------- */
+const FT=[
+ {s:1,c:"Deny ACL",t:"DENY-Berechtigung vorhanden",d:()=>"DENY-Einträge übersteuern Allow-Zuweisungen und erschweren die Nachvollziehbarkeit. Notwendigkeit prüfen.",k:(r,m)=>`deny|${get(r,m,"FolderPath")}|${get(r,m,"Role")}|${get(r,m,"Rights")}`},
+ {s:1,c:"Verwaiste SID",t:"Nicht auflösbare SID in Berechtigung",d:(r,m)=>`Nicht regulär auflösbare SID: ${get(r,m,"RoleSID")||get(r,m,"RoleIdentity")}`,k:(r,m)=>`orphan|${get(r,m,"FolderPath")}|${get(r,m,"RoleSID")}`},
+ {s:2,c:"Direktberechtigung",t:"Direkte Benutzerberechtigung (kein RBAC/AGDLP)",d:()=>"Benutzer direkt statt über Rollen-/Berechtigungsgruppe berechtigt. Erschwert Rezertifizierung und Need-to-know-Nachweis.",k:(r,m)=>`direct|${get(r,m,"FolderPath")}|${get(r,m,"UserOrMember")}|${get(r,m,"Rights")}`},
+ {s:1,c:"Deaktiviertes Konto",t:"Deaktiviertes Konto weiterhin berechtigt",d:(r,m)=>`Konto ${get(r,m,"UserOrMember")} ist deaktiviert, erscheint aber im Berechtigungspfad ${get(r,m,"GroupPath")||"(direkt)"}.`,k:(r,m)=>`disabled|${get(r,m,"FolderPath")}|${get(r,m,"UserOrMember")}|${get(r,m,"Role")}`},
+ {s:0,c:"Breite Berechtigung",t:"Breite Identität mit Schreib-/Änderungsrechten",d:(r,m)=>`${get(r,m,"RoleIdentity")||get(r,m,"Role")} (faktisch alle Benutzer) besitzt ${rowClass(r,m)} auf Ebene ${get(r,m,"PermissionLayer")}. Verstößt gegen Need-to-know, sofern nicht durch die andere Ebene begrenzt – Tab „Wirksam“ prüfen.`,k:(r,m)=>`broad|${get(r,m,"FolderPath")}|${get(r,m,"PermissionLayer")}|${get(r,m,"Role")}|${rowClass(r,m)}`},
+ {s:2,c:"Vererbung",t:"NTFS-Vererbung unterbrochen",d:()=>"Geschützte ACL: Berechtigungen weichen vom übergeordneten Ordner ab. Dokumentation und Notwendigkeit prüfen.",k:(r,m)=>`broken|${get(r,m,"FolderPath")}`},
+ {s:2,c:"Unbekannter Principal",t:"Principal nicht als AD-Objekt klassifiziert",d:(r,m)=>`Typ ${get(r,m,"MemberType")||get(r,m,"RoleType")}: lokales Konto, Fremddomäne oder Altlast prüfen.`,k:(r,m)=>`unknown|${get(r,m,"FolderPath")}|${get(r,m,"Role")}|${get(r,m,"UserOrMember")}`},
+ {s:2,c:"Vererbung",t:"NTFS-Vererbung unterbrochen",d:(r,m)=>`Vom Audit als geschützte ACL erkannt${get(r,m,"Owner")?" (Owner: "+get(r,m,"Owner")+")":""}.`,k:(r,m)=>`broken|${get(r,m,"FolderPath")}`},
+ {s:1,c:"Verwaiste SID",t:"Verwaiste SID gefunden",d:(r,m)=>`Nicht auflösbare SID: ${get(r,m,"SID")||get(r,m,"Identity")}`,k:(r,m)=>`orphan|${get(r,m,"Path")}|${get(r,m,"SID")}`},
+ {s:3,c:"Audit-Fehler",t:"Audit konnte Objekt nicht vollständig auswerten",d:(r,m)=>`${get(r,m,"Operation")||"Operation"}: ${get(r,m,"Error")}`,k:(r,m)=>`err|${get(r,m,"Target")}|${get(r,m,"Operation")}|${get(r,m,"Error")}`},
+ {s:1,c:"Abdeckungslücke",t:"Teilbaum konnte nicht enumeriert werden",d:(r,m)=>`Enumeration fehlgeschlagen: ${get(r,m,"Error")}. Der Inhalt dieses Ordners fehlt im Audit – Nachweis unvollständig.`,k:(r,m)=>`enum|${get(r,m,"Target")}`},
+ {s:1,c:"Least Privilege",t:"Vollzugriff für Nicht-Administrator",d:(r,m)=>`${get(r,m,"UserOrMember")} erhält über ${get(r,m,"Role")} FullControl (${get(r,m,"PermissionLayer")}). Vollzugriff erlaubt das Ändern von Berechtigungen und gehört nur Administratoren/System.`,k:(r,m)=>`full|${get(r,m,"FolderPath")}|${get(r,m,"PermissionLayer")}|${get(r,m,"Role")}`},
+ {s:1,c:"Least Privilege",t:"Nicht-Administrator kann ACL/Owner ändern",d:(r,m)=>`Recht ${get(r,m,"Rights")} enthält ChangePermissions/TakeOwnership (Rolle ${get(r,m,"Role")}). Ermöglicht Selbstberechtigung.`,k:(r,m)=>`aclctl|${get(r,m,"FolderPath")}|${get(r,m,"Role")}`},
+ {s:2,c:"Inaktives Konto",t:"Berechtigtes Konto seit längerem inaktiv",d:(r,m)=>`${get(r,m,"UserOrMember")} seit ${get(r,m,"MemberInactiveDays")} Tagen ohne Anmeldung (Schwellwert ${settings.inactiveDays}). Berechtigung wird nicht genutzt – Need-to-know/Rezertifizierung prüfen.`,k:(r,m)=>`inactive|${get(r,m,"FolderPath")}|${get(r,m,"UserOrMember")}|${get(r,m,"Role")}`},
+ {s:4,c:"Need-to-know",t:"Breite Identität mit Leserecht",d:(r,m)=>`${get(r,m,"RoleIdentity")||get(r,m,"Role")} kann lesen (${get(r,m,"PermissionLayer")}). Zulässig nur, wenn der Bereich bewusst für alle Mitarbeiter bestimmt ist – im Soll dokumentieren.`,k:(r,m)=>`broadread|${get(r,m,"FolderPath")}|${get(r,m,"PermissionLayer")}|${get(r,m,"Role")}`},
+ {s:2,c:"AGDLP",t:"Verteilergruppe in Berechtigung",d:(r,m)=>`${get(r,m,"Role")} ist eine Distribution-Gruppe (${get(r,m,"RoleScope")}). Verteilergruppen sind kein Sicherheitsprinzipal und deuten auf ein fehlerhaftes Rollenkonzept hin.`,k:(r,m)=>`dist|${get(r,m,"FolderPath")}|${get(r,m,"Role")}`},
+ {s:2,c:"Owner",t:"Benutzer ist Besitzer des Ordners",d:(r,m)=>`Owner ${get(r,m,"Owner")} (${get(r,m,"OwnerType")}) kann sich implizit selbst berechtigen (WRITE_DAC). Owner sollte Administratoren/Builtin sein.`,k:(r,m)=>`owner|${get(r,m,"FolderPath")}`},
+ {s:2,c:"Owner",t:"Besitzer nicht auflösbar (verwaist)",d:(r,m)=>`Owner-SID ${get(r,m,"OwnerSID")} nicht auflösbar.`,k:(r,m)=>`owner|${get(r,m,"FolderPath")}`},
+ {s:1,c:"Owner",t:"Breite Identität als Besitzer",d:(r,m)=>`Owner ${get(r,m,"Owner")} ist eine breite Identität – jeder kann ACLs ändern.`,k:(r,m)=>`owner|${get(r,m,"FolderPath")}`},
+ {s:3,c:"Abdeckungslücke",t:"ACL des Ordners nicht lesbar",d:()=>"Get-Acl fehlgeschlagen – Berechtigungen dieses Ordners sind im Nachweis nicht enthalten.",k:(r,m)=>`aclerr|${get(r,m,"FolderPath")}`},
+ {s:4,c:"Need-to-know",t:"Freigabe ohne Access-Based Enumeration",d:(r,m)=>`\\\\${get(r,m,"FileServer")}\\${get(r,m,"ShareName")}: Benutzer sehen auch Ordner, auf die sie keinen Zugriff haben (FolderEnumerationMode ${get(r,m,"FolderEnumerationMode")||"Unrestricted"}).`,k:(r,m)=>`abe|${get(r,m,"FileServer")}|${get(r,m,"ShareName")}`},
+ {s:2,c:"Rollenkonzept",t:"Computer-/Dienstkonto in Berechtigung",d:(r,m)=>`${get(r,m,"UserOrMember")} (${get(r,m,"MemberType")}) ist über ${get(r,m,"Role")} berechtigt.`,k:(r,m)=>`svc|${get(r,m,"FolderPath")}|${get(r,m,"UserOrMember")}`}
+];
+const FCAT=[...new Set(FT.map(f=>f.c))];
+let fs_;function resetFindings(){fs_={buckets:SEVS.map(()=>new GrowArr(Float64Array)),seen:new Set(),typeCounts:new Uint32Array(FT.length),total:0}}resetFindings();
+function hkey(s){let h1=0x811c9dc5,h2=0x9e3779b9;for(let i=0;i<s.length;i++){const c=s.charCodeAt(i);h1=Math.imul(h1^c,16777619);h2=Math.imul(h2+c,2654435761)^(h2>>>13)}return (h1>>>0)*2097152+((h2>>>0)&2097151)}
+function addFinding(type,dsc,idx,r,m){const h=hkey(FT[type].k(r,m));if(fs_.seen.has(h))return;fs_.seen.add(h);fs_.buckets[FT[type].s].push((type*16+dsc)*4294967296+idx);fs_.typeCounts[type]++;fs_.total++}
+function unpack(v){const hi=Math.floor(v/4294967296);return{type:hi>>4,ds:hi&15,idx:v-hi*4294967296}}
+function findingAt(pos){for(const b of fs_.buckets){if(pos<b.n)return b.get(pos);pos-=b.n}return 0}
+function deriveRow(ds,r,m,idx){
+  const dsc=DSC[ds];
+  if(ds==="matrix"){
+    const access=low(get(r,m,"AccessType")),mt=low(get(r,m,"MemberType")),rc=roleClassOf(r,m),mc=memberClassOf(r,m),cls=rowClass(r,m),rank=CLASS_RANK[cls]??1,mask=rowMask(r,m),isAllow=access.includes("allow"),layer=get(r,m,"PermissionLayer");
+    if(access.includes("deny"))addFinding(0,dsc,idx,r,m);
+    if(boolVal(get(r,m,"OrphanedSID"))===true)addFinding(1,dsc,idx,r,m);
+    if(mt==="user"&&boolVal(get(r,m,"DirectAssignment"))===true)addFinding(2,dsc,idx,r,m);
+    if((mt==="user"||mt==="localuser")&&boolVal(get(r,m,"MemberEnabled"))===false)addFinding(3,dsc,idx,r,m);
+    if(rc==="Broad"&&isAllow){if(rank>=2)addFinding(4,dsc,idx,r,m);else if(rank===1)addFinding(14,dsc,idx,r,m)}
+    if(boolVal(get(r,m,"InheritanceBroken"))===true)addFinding(5,dsc,idx,r,m);
+    if(/localorunknown|unknownsid|foreign|adobject/.test(mt))addFinding(6,dsc,idx,r,m);
+    if(isAllow&&rc!=="Admin"&&rc!=="System"&&mc!=="Admin"&&mc!=="System"){if(cls==="FullControl")addFinding(11,dsc,idx,r,m);else if(mask&(0x40000|0x80000))addFinding(12,dsc,idx,r,m)}
+    const inact=Number(get(r,m,"MemberInactiveDays"));if(mt==="user"&&inact>=settings.inactiveDays&&boolVal(get(r,m,"MemberEnabled"))!==false)addFinding(13,dsc,idx,r,m);
+    if(low(get(r,m,"RoleCategory"))==="distribution")addFinding(15,dsc,idx,r,m);
+    if((mt==="computer"||mt==="serviceaccount")&&layer==="NTFS")addFinding(21,dsc,idx,r,m);
+  }
+  else if(ds==="inheritance")addFinding(7,dsc,idx,r,m);
+  else if(ds==="orphans")addFinding(8,dsc,idx,r,m);
+  else if(ds==="errors"){const op=low(get(r,m,"Operation"));if(op.startsWith("enumerate"))addFinding(10,dsc,idx,r,m);else if(op!=="reparsepoint")addFinding(9,dsc,idx,r,m)}
+  else if(ds==="folders"){const risk=get(r,m,"OwnerRisk");if(risk==="UserOwner")addFinding(16,dsc,idx,r,m);else if(risk==="OrphanedOwner")addFinding(17,dsc,idx,r,m);else if(risk==="BroadOwner")addFinding(18,dsc,idx,r,m);if(get(r,m,"AclStatus")==="Error")addFinding(19,dsc,idx,r,m)}
+  else if(ds==="smb"){const abe=get(r,m,"AccessBasedEnumeration");if(abe!==""&&boolVal(abe)===false)addFinding(20,dsc,idx,r,m)}
+}
+function buildFRow(v,r,m){const {type}=unpack(v),f=FT[type];return[SEVS[f.s],f.c,f.t,get(r,m,"Drive"),get(r,m,"FileServer"),get(r,m,"ShareName"),get(r,m,"FolderPath")||get(r,m,"Path")||get(r,m,"Target")||(get(r,m,"ShareName")?"\\\\"+get(r,m,"FileServer")+"\\"+get(r,m,"ShareName"):""),get(r,m,"Role")||get(r,m,"Identity")||get(r,m,"Owner"),get(r,m,"UserOrMember"),get(r,m,"Rights")||get(r,m,"AccessRight"),get(r,m,"RightsClass")||(get(r,m,"Rights")?classOf(rowMask(r,m)):""),get(r,m,"AccessType"),f.d(r,m),f.k(r,m)]}
+function materializeFindings(positions){const vals=positions.map(findingAt),groups=new Map(),out=new Array(vals.length);vals.forEach((v,k)=>{const u=unpack(v);let g=groups.get(u.ds);if(!g)groups.set(u.ds,g=[]);g.push([u.idx,k])});for(const [dsc,list] of groups){list.sort((a,b)=>a[0]-b[0]);const d=datasets[DSN[dsc]];if(!d){list.forEach(([,k])=>out[k]=buildFRow(vals[k],[],{}));continue}const rows=readByIndices(d,list.map(x=>x[0]));list.forEach(([,k],j)=>out[k]=buildFRow(vals[k],rows[j],d.map))}return out}
+function candidatePositions(f){if(!f.severity&&!f.category)return null;const out=new GrowArr(Uint32Array);let pos=0;SEVS.forEach((sv,si)=>{const b=fs_.buckets[si];if(f.severity&&f.severity!==sv){pos+=b.n;return}for(let i=0;i<b.n;i++,pos++){if(f.category&&FT[unpack(b.get(i)).type].c!==f.category)continue;out.push(pos)}});return out}
+function findingOptions(){const cats=new Set();FT.forEach((f,i)=>{if(fs_.typeCounts[i])cats.add(f.c)});return{Severity:SEVS.filter((s,i)=>fs_.buckets[i].n>0),Category:FCAT.filter(c=>cats.has(c))}}
+function findingStats(){const bySev={},byCat={};SEVS.forEach((s,i)=>bySev[s]=fs_.buckets[i].n);FT.forEach((f,i)=>{byCat[f.c]=(byCat[f.c]||0)+fs_.typeCounts[i]});return{bySev,byCat}}
+function rebuildFindings(){resetFindings();for(const ds of DSN){const d=datasets[ds];if(!d)continue;let idx=0;const st=makeStream(d.file,d.dataStart,d.file.size,d.delim,r=>{if(!nonEmpty(r))return;deriveRow(ds,r,d.map,idx);idx++});while(st.step());}}
+
+/* ---------- Import ---------- */
+function loadFile(file,ds,deriveNow){
+  const delim=detectDelimiter(file),d={file,name:file.name,delim,headers:[],map:{},count:0,anchors:new GrowArr(Float64Array,1024),dataStart:0,size:file.size,preview:[]};
+  const spec={matrix:["Drive","FileServer","ShareName","PermissionLayer","AccessType","Role","RightsClass","RoleClass"],ntfs:["RightsClass","IdentityClass"],folders:["OwnerRisk","AclStatus"],principals:["PrincipalType","IdentityClass"]}[ds]||[],sets={};for(const k of spec)sets[k]=new Set();
+  const roles=new Map(),users=new Set(),classCounts={};let lastPct=-1,haveHeader=false;const isMatrix=ds==="matrix",derive=deriveNow&&DSC[ds]!==undefined,sha=new Sha256(),protectedSet=ds==="inheritance"?new Set():null;
+  const st=makeStream(file,0,file.size,delim,(r,s,e)=>{
+    if(!haveHeader){haveHeader=true;d.headers=r.map((x,i)=>(i===0?x.replace(/^\uFEFF/,""):x).trim());d.map=colMap(d.headers);d.dataStart=e;return}
+    if(!nonEmpty(r))return;
+    if(d.count%AE===0)d.anchors.push(s);
+    const m=d.map,idx=d.count;
+    for(const k of spec){const v=get(r,m,k);if(v&&sets[k].size<MAX_OPTIONS*4)sets[k].add(v)}
+    if(isMatrix){const role=get(r,m,"Role"),u=get(r,m,"UserOrMember");if(role)roles.set(role,(roles.get(role)||0)+1);if(u)users.add(u);const c=rowClass(r,m);classCounts[c]=(classCounts[c]||0)+1}
+    if(protectedSet)protectedSet.add(hkey(low(get(r,m,"FolderPath"))));
+    if(d.count<300)d.preview.push(r);
+    if(derive)deriveRow(ds,r,m,idx);
+    d.count++;
+  },sha);
+  while(st.step()){const pct=Math.floor(st.offset/file.size*100);if(pct!==lastPct){lastPct=pct;postMessage({type:"progress",dataset:ds,fileName:file.name,bytes:st.offset,total:file.size,pct,rows:d.count})}}
+  if(!haveHeader)d.dataStart=file.size;
+  d.sha256=sha.hex();if(protectedSet)d.protectedSet=protectedSet;if(d.count>300)d.preview=[];
+  const o={};for(const [k,set] of Object.entries(sets)){const arr=[...set].sort((a,b)=>a.localeCompare(b,"de",{numeric:true}));o[k]=arr.slice(0,MAX_OPTIONS);if(arr.length>MAX_OPTIONS)o[k+"_truncated"]=true}options[ds]=o;
+  if(isMatrix)stats.matrixMetrics={roles:roles.size,users:users.size,topRoles:[...roles.entries()].sort((a,b)=>b[1]-a[1]).slice(0,12),classCounts};
+  return d;
+}
+
+/* ---------- Filter ---------- */
+function matches(ds,r,m,f){
+  if(!f)return true;
+  if(ds==="matrix"){if(f.drive&&get(r,m,"Drive")!==f.drive)return false;if(f.server&&get(r,m,"FileServer")!==f.server)return false;if(f.share&&get(r,m,"ShareName")!==f.share)return false;if(f.layer&&get(r,m,"PermissionLayer")!==f.layer)return false;if(f.access&&get(r,m,"AccessType")!==f.access)return false;if(f.role&&get(r,m,"Role")!==f.role)return false;if(f.member&&!low(get(r,m,"UserOrMember")+" "+get(r,m,"MemberName")).includes(low(f.member)))return false;if(f.rights&&!low(get(r,m,"Rights")).includes(low(f.rights)))return false;if(f.rclass&&rowClass(r,m)!==f.rclass)return false;if(f.roleclass&&roleClassOf(r,m)!==f.roleclass)return false;if(f.direct&&String(boolVal(get(r,m,"DirectAssignment")))!==f.direct)return false;if(f.broken&&String(boolVal(get(r,m,"InheritanceBroken")))!==f.broken)return false;if(f.enabled&&String(boolVal(get(r,m,"MemberEnabled")))!==f.enabled)return false;if(f.path&&!low(get(r,m,"FolderPath")).startsWith(low(f.path)))return false}
+  if(f.search){const q=low(f.search);for(let i=0;i<r.length;i++)if(low(r[i]).includes(q))return true;return false}
+  return true;
+}
+const rowHas=(r,q)=>{for(let i=0;i<r.length;i++)if(low(r[i]).includes(q))return true;return false};
+const fkey=f=>JSON.stringify(f||{}),isNone=f=>Object.values(f||{}).every(v=>!v);
+function resolveFilter(ds,f,alive,progress,cb){
+  const key=fkey(f);
+  if(ds==="findings"){
+    if(isNone(f))return cb(null,fs_.total);
+    const cache=queryCache.findings;if(cache&&cache.key===key)return cb(cache.indices,cache.indices.n);
+    const cand=candidatePositions(f);
+    if(!f.search){queryCache.findings={key,indices:cand};return cb(cand,cand.n)}
+    const N=cand?cand.n:fs_.total,hits=new GrowArr(Uint32Array),q=low(f.search);let i=0;
+    (function step(){if(!alive())return;const end=Math.min(i+4000,N),pos=[];for(let k=i;k<end;k++)pos.push(cand?cand.get(k):k);const rows=materializeFindings(pos);rows.forEach((r,j)=>{if(rowHas(r,q))hits.push(pos[j])});i=end;progress(N?Math.floor(i/N*100):100);if(i<N)setTimeout(step,0);else{queryCache.findings={key,indices:hits};cb(hits,hits.n)}})();
+    return;
+  }
+  if(VIRTUAL[ds]){const v=VIRTUAL[ds]();if(!v)return cb(null,0);if(isNone(f))return cb(v.all,v.all.n);const cache=queryCache[ds];if(cache&&cache.key===key)return cb(cache.indices,cache.indices.n);const q=low(f.search||""),hits=new GrowArr(Uint32Array),N=v.all.n;let i=0;(function step(){if(!alive())return;const end=Math.min(i+4000,N),sub=[];for(let k=i;k<end;k++)sub.push(v.all.get(k));const rows=v.rows(sub);rows.forEach((r,j)=>{if(rowHas(r,q))hits.push(sub[j])});i=end;progress(N?Math.floor(i/N*100):100);if(i<N)setTimeout(step,0);else{queryCache[ds]={key,indices:hits};cb(hits,hits.n)}})();return}
+  const d=datasets[ds];if(!d)return cb(null,0);
+  if(isNone(f))return cb(null,d.count);
+  const cache=queryCache[ds];if(cache&&cache.key===key)return cb(cache.indices,cache.indices.n);
+  const hits=new GrowArr(Uint32Array);let idx=0;
+  const st=makeStream(d.file,d.dataStart,d.file.size,d.delim,r=>{if(!nonEmpty(r))return;if(matches(ds,r,d.map,f))hits.push(idx);idx++});
+  let last=-1;(function step(){if(!alive())return;let more=true;try{more=st.step()}catch(err){postMessage({type:"error",message:err.message,stack:err.stack||"",fileName:d.name});return}const pct=Math.floor((st.offset-d.dataStart)/Math.max(1,d.file.size-d.dataStart)*100);if(pct!==last){last=pct;progress(pct)}if(more)setTimeout(step,0);else{queryCache[ds]={key,indices:hits};cb(hits,hits.n)}})();
+}
+/* Virtuelle Datensätze (Soll-Abweichungen, Delta) – Zeilen werden aus der Quelldatei nachgelesen */
+const VIRTUAL={
+  soll:()=>sollResult?{all:sollResult.all,rows:sub=>sollRows(sub)}:null,
+  deltaAdded:()=>deltaResult?{all:deltaResult.added,rows:sub=>readByIndices(datasets.matrix,sortedCopy(sub))}:null,
+  deltaRemoved:()=>deltaResult?{all:deltaResult.removed,rows:sub=>readByIndices(datasets.compare,sortedCopy(sub))}:null
+};
+function sortedCopy(a){return a.slice().sort((x,y)=>x-y)}
+function fetchRows(ds,indices,from,to){
+  if(ds==="findings"){const pos=indices?indices.slice(from,to):Array.from({length:Math.max(0,Math.min(to,fs_.total)-from)},(_,i)=>from+i);return materializeFindings(pos)}
+  if(VIRTUAL[ds]){const v=VIRTUAL[ds]();if(!v)return[];const sub=(indices||v.all).slice(from,to);return v.rows(sub)}
+  const d=datasets[ds];if(!d)return[];
+  return indices?readByIndices(d,indices.slice(from,to)):readRange(d,from,to);
+}
+function headersOf(ds){if(ds==="findings")return FINDING_HEADERS;if(ds==="soll")return SOLL_HEADERS;if(ds==="deltaAdded")return datasets.matrix?.headers||[];if(ds==="deltaRemoved")return datasets.compare?.headers||[];return datasets[ds]?.headers||[]}
+function queryDataset(msg){
+  const ds=msg.dataset,page=Math.max(1,msg.page||1),size=Math.max(10,msg.size||100),token=msg.requestId,f=msg.filters||{};
+  latestQueryToken[ds]=token;const alive=()=>latestQueryToken[ds]===token;
+  if(ds!=="findings"&&!VIRTUAL[ds]&&!datasets[ds]){postMessage({type:"queryResult",dataset:ds,headers:[],rows:[],total:0,page:1,size,requestId:token});return}
+  resolveFilter(ds,f,alive,pct=>postMessage({type:"scanProgress",dataset:ds,pct,requestId:token}),(indices,total)=>{
+    if(!alive())return;const pages=Math.max(1,Math.ceil(total/size)),p=Math.min(page,pages),s=(p-1)*size;
+    try{let rows=fetchRows(ds,indices,s,s+size);const h=headersOf(ds);if(msg.pseudo)rows=rows.map(r=>pseudoRow(h,r));postMessage({type:"queryResult",dataset:ds,headers:h,rows,total,page:p,size,requestId:token})}
+    catch(err){postMessage({type:"error",message:err.message,stack:err.stack||"",fileName:datasets[ds]?.name||""})}
+  });
+}
+/* Alle (gefilterten) Zeilen bis Limit einsammeln (für Nachweis-Report) */
+function collect(msg){
+  const ds=msg.dataset,f=msg.filters||{},limit=msg.limit||5000,rid=msg.requestId;
+  resolveFilter(ds,f,()=>true,pct=>postMessage({type:"collectProgress",requestId:rid,pct}),(indices,total)=>{
+    const h=headersOf(ds),out=[],N=Math.min(total,limit);let i=0;
+    (function step(){try{let rows=fetchRows(ds,indices,i,Math.min(N,i+2000));if(msg.pseudo)rows=rows.map(r=>pseudoRow(h,r));out.push(...rows);i+=2000}catch(err){postMessage({type:"error",message:err.message,stack:err.stack||""});return}if(i<N)setTimeout(step,0);else postMessage({type:"collectResult",requestId:rid,dataset:ds,headers:h,rows:out,total,truncated:total>limit})})();
+  });
+}
+
+/* ---------- Pseudonymisierung (DSGVO) ---------- */
+const PSEUDO_COLS=new Set(["UserOrMember","MemberName","Member","Owner","Identity","Name","SamAccountName","DisplayName","ExecutedBy","MemberSID","OwnerSID","SID"]);
+const PSEUDO_TYPES=/^(user|localuser|computer|serviceaccount)$/i;
+function pseudo(v){if(!v)return v;return"P-"+(hkey(low(v))%1679616).toString(36).toUpperCase().padStart(4,"0")}
+function pseudoRow(h,r){const m=colMap(h),out=r.slice();const mt=low(get(r,m,"MemberType")||get(r,m,"PrincipalType")||get(r,m,"OwnerType")||"user");
+  for(let i=0;i<h.length;i++){const k=h[i];if(!PSEUDO_COLS.has(k))continue;const v=r[i];if(!v)continue;
+    if(k==="Owner"||k==="OwnerSID"||k==="ExecutedBy"){out[i]=pseudo(v);continue}
+    if(k==="Member"||k==="MemberName"||k==="UserOrMember"||k==="MemberSID"){if(PSEUDO_TYPES.test(mt)||!mt)out[i]=pseudo(v);continue}
+    if(PSEUDO_TYPES.test(mt))out[i]=pseudo(v)}
+  // Rolle, wenn sie selbst ein Benutzer ist (Direktberechtigung / Owner)
+  const rt=low(get(r,m,"RoleType")),role=get(r,m,"Role");
+  const roleIsUser=rt?PSEUDO_TYPES.test(rt):(m.RoleType===undefined&&(role&&role===get(r,m,"UserOrMember")||get(r,m,"Category")==="Owner"));
+  if(roleIsUser)for(const k of ["Role","RoleIdentity","RoleSID"]){if(m[k]!==undefined&&r[m[k]])out[m[k]]=pseudo(r[m[k]])}
+  // Detail-Texte der Prüfhinweise
+  const di=m.Detail;if(di!==undefined&&PSEUDO_TYPES.test(mt||"user")){const u=get(r,m,"UserOrMember");if(u)out[di]=String(out[di]).split(u).join(pseudo(u))}
+  return out}
+
+/* ---------- Wirksame Berechtigung je Ordner ---------- */
+function ancestorsOf(path){const p=path.replace(/[\\\/]+$/,"");const parts=p.split("\\");const out=[];if(p.startsWith("\\\\")){const base=parts.slice(0,4).join("\\");for(let i=parts.length;i>=4;i--)out.push(parts.slice(0,i).join("\\"));if(out[out.length-1]!==base)out.push(base)}else{for(let i=parts.length;i>=1;i--)out.push(parts.slice(0,i).join("\\"))}return out}
+function effective(msg){
+  const rid=msg.requestId,path=String(msg.path||"").trim();const d=datasets.matrix;if(!d||!path){postMessage({type:"effectiveResult",requestId:rid,error:"Keine Matrix geladen oder kein Pfad."});return}
+  const chain=ancestorsOf(path),chainKeys=new Set(chain.map(x=>hkey(low(x)))),shareRoot=chain[chain.length-1];
+  const prot=datasets.inheritance?.protectedSet||new Set();
+  const rows=[];let idx=0,last=-1;const m=d.map;
+  const st=makeStream(d.file,d.dataStart,d.file.size,d.delim,r=>{if(!nonEmpty(r))return;const fp=low(get(r,m,"FolderPath"));if(chainKeys.has(hkey(fp))||(get(r,m,"PermissionLayer")==="SMB"&&low(get(r,m,"ShareRoot")||fp)===low(shareRoot)))rows.push(r);idx++});
+  (function step(){let more=true;try{more=st.step()}catch(err){postMessage({type:"effectiveResult",requestId:rid,error:err.message});return}const pct=Math.floor((st.offset-d.dataStart)/Math.max(1,d.file.size-d.dataStart)*100);if(pct!==last){last=pct;postMessage({type:"scanProgress",dataset:"effective",pct,requestId:rid})}if(more)setTimeout(step,0);else finish()})();
+  function finish(){
+    // Kette: von X aufwärts bis zum ersten geschützten Ordner (inklusive) bzw. Root
+    const byFolder=new Map();for(const r of rows){const fp=low(get(r,m,"FolderPath"));if(!byFolder.has(fp))byFolder.set(fp,[]);byFolder.get(fp).push(r)}
+    const chainUsed=[];let stoppedByProt=false;for(let i=0;i<chain.length;i++){const c=low(chain[i]);chainUsed.push(chain[i]);const isProt=prot.has(hkey(c))||(byFolder.get(c)||[]).some(r=>boolVal(get(r,m,"InheritanceBroken"))===true&&get(r,m,"PermissionLayer")==="NTFS");if(isProt){stoppedByProt=true;break}}
+    let topIdx=-1;chainUsed.forEach((c,i)=>{if((byFolder.get(low(c))||[]).some(r=>get(r,m,"PermissionLayer")!=="SMB"))topIdx=i});
+    if(topIdx>=0)chainUsed.length=topIdx+1;
+    const top=topIdx>=0?low(chainUsed[topIdx]):"",target=low(chain[0]);
+    const ntfsAces=[],smbAces=[];
+    chainUsed.forEach((folder,depth)=>{const f=low(folder);for(const r of byFolder.get(f)||[]){
+      if(get(r,m,"PermissionLayer")==="SMB")continue;
+      const inh=boolVal(get(r,m,"IsInherited"))===true;if(inh&&f!==top)continue;
+      const IF=get(r,m,"InheritanceFlags"),PF=get(r,m,"PropagationFlags");
+      if(f===target){if(/InheritOnly/i.test(PF))continue}else{if(!/ContainerInherit/i.test(IF))continue;if(/NoPropagateInherit/i.test(PF)&&depth!==1)continue}
+      ntfsAces.push({r,depth,deny:low(get(r,m,"AccessType")).includes("deny"),inh,mask:rowMask(r,m)})}});
+    for(const r of rows)if(get(r,m,"PermissionLayer")==="SMB")smbAces.push({r,deny:low(get(r,m,"AccessType")).includes("deny"),mask:rowMask(r,m)});
+    // Reihenfolge: nächster Ordner zuerst; je Ordner explizit vor geerbt, Deny vor Allow
+    ntfsAces.sort((a,b)=>a.depth-b.depth||(a.inh-b.inh)||(b.deny-a.deny));
+    const principals=new Map();const keyOf=r=>{const u=get(r,m,"UserOrMember"),sid=get(r,m,"MemberSID");return(sid||u)+"|"+low(u)};
+    const broadRows=[];
+    for(const a of ntfsAces.concat(smbAces)){const r=a.r;if(roleClassOf(r,m)==="Broad"){broadRows.push(a);continue}const k=keyOf(r);if(!principals.has(k))principals.set(k,{r,ntfs:[],smb:[]});const p=principals.get(k);(a.depth!==undefined?p.ntfs:p.smb).push(a)}
+    const broadN=broadRows.filter(a=>a.depth!==undefined),broadS=broadRows.filter(a=>a.depth===undefined);
+    function evalAces(list){let allowed=0,decided=0;for(const a of list){const bits=(a.mask&0x1F01FF)&~decided;if(!a.deny)allowed|=bits;decided|=bits}return allowed>>>0}
+    function applyBroad(mine,broad){return mine.concat(broad).sort((a,b)=>(a.depth??99)-(b.depth??99)||((a.inh?1:0)-(b.inh?1:0))||((b.deny?1:0)-(a.deny?1:0)))}
+    const hasSmb=smbAces.length>0,out=[];
+    const mk=(label,name,type,enabled,via,nMask,sMask,cls)=>{const eff=hasSmb?(nMask&sMask):nMask;out.push([label,name,type,enabled,via,classOf(nMask),hasSmb?classOf(sMask):"–",classOf(eff),cls,(eff&0x1F01FF)!==0?"Ja":"Nein"])};
+    for(const [k,p] of principals){const r=p.r,via=[...new Set(p.ntfs.concat(p.smb).map(a=>get(a.r,m,"GroupPath")||get(a.r,m,"Role")))].join(" | ");const nMask=evalAces(applyBroad(p.ntfs,broadN)),sMask=evalAces(applyBroad(p.smb,broadS));mk(get(r,m,"UserOrMember"),get(r,m,"MemberName"),get(r,m,"MemberType"),get(r,m,"MemberEnabled"),via,nMask,sMask,memberClassOf(r,m))}
+    if(broadRows.length){const via=[...new Set(broadRows.map(a=>get(a.r,m,"RoleIdentity")||get(a.r,m,"Role")))].join(" | ");mk("* Alle Benutzer *","über breite Identität","Broad","",via,evalAces(broadN),evalAces(broadS),"Broad")}
+    const rank=x=>CLASS_RANK[x]??0;out.sort((a,b)=>rank(b[7])-rank(a[7])||a[0].localeCompare(b[0],"de"));
+    const notes=[];notes.push(`Kette: ${chainUsed.join("  ←  ")}`+(stoppedByProt?" (geschützte ACL – darüber liegende Ordner nicht relevant)":" (bis zum obersten erfassten Ordner)"));
+    if(!hasSmb)notes.push("Keine SMB-Share-ACL in der Matrix gefunden – Spalte SMB/Wirksam nur NTFS.");
+    if(!rows.some(r=>low(get(r,m,"FolderPath"))===target))notes.push("Für den Ordner selbst sind keine expliziten ACEs erfasst – Rechte stammen vollständig aus der Vererbung.");
+    postMessage({type:"effectiveResult",requestId:rid,path,headers:EFF_HEADERS,rows:msg.pseudo?out.map(r=>pseudoRow(EFF_HEADERS,r)):out,notes,aceCount:ntfsAces.length+smbAces.length});
+  }
+}
+const EFF_HEADERS=["UserOrMember","MemberName","MemberType","MemberEnabled","Via","NTFS","SMB","Wirksam","MemberClass","Zugriff"];
+
+/* ---------- Soll-Ist-Abgleich ---------- */
+let soll=null,sollResult=null;
+const SOLL_HEADERS=["Abweichung","FolderPath","PermissionLayer","Role","RoleClass","RightsClass","Rights","AccessType","SollPfad","SollRolle","SollMaxRechte","SollDataOwner","_key"];
+const SOLL_REASONS=["Kein Soll-Eintrag für diesen Pfad","Rolle nicht im Soll vorgesehen","Recht höher als im Soll erlaubt","Direktberechtigung (Soll erlaubt nur Rollen)"];
+function setSoll(entries){soll=entries.map(e=>({path:low(String(e.Path||e.Pfad||"").replace(/[\\\/]+$/,"")),role:low(e.Role||e.Rolle||"*"),max:String(e.MaxRights||e.MaxRechte||"Read"),owner:e.DataOwner||e.Verantwortlicher||"",comment:e.Comment||e.Kommentar||"",raw:e,hits:0})).filter(e=>e.path);sollResult=null;queryCache.soll=null}
+function sollCompare(msg){
+  const rid=msg.requestId,d=datasets.matrix;if(!d||!soll){postMessage({type:"sollResult",requestId:rid,error:"Matrix oder Soll-Datei fehlt."});return}
+  const m=d.map,all=new GrowArr(Uint32Array),reason=new GrowArr(Uint8Array),entry=new GrowArr(Int32Array),seen=new Set();soll.forEach(e=>e.hits=0);
+  let idx=0,last=-1;
+  const st=makeStream(d.file,d.dataStart,d.file.size,d.delim,r=>{if(!nonEmpty(r))return;const i=idx++;
+    if(boolVal(get(r,m,"IsInherited"))===true&&get(r,m,"RelativePath")!==".")return;
+    if(low(get(r,m,"AccessType")).includes("deny"))return;
+    const rc=roleClassOf(r,m);if(settings.ignoreAdminInSoll&&(rc==="Admin"||rc==="System"))return;
+    const fp=low(get(r,m,"FolderPath")),role=low(get(r,m,"Role")),cls=rowClass(r,m),rank=CLASS_RANK[cls]??1,direct=boolVal(get(r,m,"DirectAssignment"))===true&&/^(user|localuser)$/i.test(get(r,m,"MemberType"));
+    let best=null;for(const e of soll){if(fp===e.path||fp.startsWith(e.path+"\\")){if(!best||e.path.length>best.path.length)best=e}}
+    const k=`${fp}|${get(r,m,"PermissionLayer")}|${role}|${cls}`;const h=hkey(k);if(seen.has(h))return;
+    let code=-1,ei=-1;
+    if(!best){if(settings.requireSoll)code=0}
+    else{const cands=soll.filter(e=>e.path===best.path);const ex=cands.find(e=>e.role===role||e.role===low(get(r,m,"RoleIdentity"))||e.role===low(get(r,m,"RoleSID")));const wild=cands.find(e=>e.role==="*");const use=ex||wild;
+      if(!use){code=1;ei=soll.indexOf(best)}else{use.hits++;ei=soll.indexOf(use);if(direct&&get(r,m,"PermissionLayer")==="NTFS"&&!ex)code=3;else if(rank>(CLASS_RANK[use.max]??1))code=2}}
+    if(code>=0){seen.add(h);all.push(i);reason.push(code);entry.push(ei)}
+  });
+  (function step(){let more=true;try{more=st.step()}catch(err){postMessage({type:"sollResult",requestId:rid,error:err.message});return}const pct=Math.floor((st.offset-d.dataStart)/Math.max(1,d.file.size-d.dataStart)*100);if(pct!==last){last=pct;postMessage({type:"scanProgress",dataset:"soll",pct,requestId:rid})}if(more)setTimeout(step,0);else{
+    const pos=new Map();for(let i=0;i<all.n;i++)pos.set(all.get(i),i);sollResult={all,reason,entry,pos};queryCache.soll=null;
+    const counts=[0,0,0,0];for(let i=0;i<reason.n;i++)counts[reason.get(i)]++;
+    postMessage({type:"sollResult",requestId:rid,total:all.n,counts:SOLL_REASONS.map((t,i)=>[t,counts[i]]),unused:soll.filter(e=>!e.hits).map(e=>e.raw)})}})();
+}
+function sollRows(sub){const d=datasets.matrix,m=d.map,sorted=sortedCopy(sub),rows=readByIndices(d,sorted),byIdx=new Map();sorted.forEach((i,j)=>byIdx.set(i,rows[j]));return sub.map(i=>{const r=byIdx.get(i)||[],p=sollResult.pos.get(i),code=sollResult.reason.get(p),e=soll[sollResult.entry.get(p)];return[SOLL_REASONS[code],get(r,m,"FolderPath"),get(r,m,"PermissionLayer"),get(r,m,"Role"),roleClassOf(r,m),rowClass(r,m),get(r,m,"Rights"),get(r,m,"AccessType"),e?e.raw.Path||e.raw.Pfad||"":"",e?e.raw.Role||e.raw.Rolle||"":"",e?e.max:"",e?e.owner:"",`soll|${code}|${low(get(r,m,"FolderPath"))}|${low(get(r,m,"Role"))}|${rowClass(r,m)}`]})}
+
+/* ---------- Vergleich zweier Läufe (Delta) ---------- */
+let deltaResult=null;
+function rowKeyHash(r,m){return hkey([low(get(r,m,"FolderPath")),get(r,m,"PermissionLayer"),low(get(r,m,"RoleSID")||get(r,m,"Role")),low(get(r,m,"UserOrMember")),low(get(r,m,"AccessType")),rowClass(r,m),get(r,m,"IsInherited")].join("|"))}
+function hashAll(d,progress,cb){const arr=new GrowArr(Float64Array,Math.max(1024,d.count));let idx=0,last=-1;const st=makeStream(d.file,d.dataStart,d.file.size,d.delim,r=>{if(!nonEmpty(r))return;arr.push(rowKeyHash(r,d.map));idx++});(function step(){let more=true;try{more=st.step()}catch(err){cb(null,err);return}const pct=Math.floor((st.offset-d.dataStart)/Math.max(1,d.file.size-d.dataStart)*100);if(pct!==last){last=pct;progress(pct)}if(more)setTimeout(step,0);else cb(arr)})()}
+function bsearch(sorted,v){let lo=0,hi=sorted.length-1;while(lo<=hi){const mid=(lo+hi)>>1,x=sorted[mid];if(x===v)return true;if(x<v)lo=mid+1;else hi=mid-1}return false}
+function deltaCompare(msg){
+  const rid=msg.requestId,a=datasets.matrix,b=datasets.compare;if(!a||!b){postMessage({type:"deltaResult",requestId:rid,error:"Aktuelle Matrix und Vergleichslauf müssen geladen sein."});return}
+  const prog=(phase,pct)=>postMessage({type:"scanProgress",dataset:"delta",pct,requestId:rid,phase});
+  hashAll(a,p=>prog("aktuell",p),(ha,err)=>{if(err)return postMessage({type:"deltaResult",requestId:rid,error:err.message});
+    hashAll(b,p=>prog("vergleich",p),(hb,err2)=>{if(err2)return postMessage({type:"deltaResult",requestId:rid,error:err2.message});
+      const sa=ha.view().slice().sort(),sb=hb.view().slice().sort();const added=new GrowArr(Uint32Array),removed=new GrowArr(Uint32Array);
+      const va=ha.view();for(let i=0;i<va.length;i++)if(!bsearch(sb,va[i]))added.push(i);
+      const vb=hb.view();for(let i=0;i<vb.length;i++)if(!bsearch(sa,vb[i]))removed.push(i);
+      deltaResult={added,removed};queryCache.deltaAdded=null;queryCache.deltaRemoved=null;
+      postMessage({type:"deltaResult",requestId:rid,added:added.n,removed:removed.n,current:a.count,compare:b.count,compareName:b.name})})});
+}
+
+
+/* ---------- Berechtigungsübersicht (Nachweis-Report 2): Ordner × Rollen × Benutzer ---------- */
+function accessReport(msg){
+  const rid=msg.requestId,d=datasets.matrix;if(!d){postMessage({type:"accessResult",requestId:rid,error:"Keine Matrix geladen."});return}
+  const m=d.map,prefix=low(msg.pathPrefix||""),layerF=msg.layer||"",PAIR_CAP=msg.pairCap||1500000,pseudoOn=!!msg.pseudo;
+  const folders=new Map(),roles=new Map(),users=new Map();let pairs=0,truncated=false,rowsSeen=0,rowsUsed=0,last=-1;
+  const pu=(v,t)=>pseudoOn&&PSEUDO_TYPES.test(t||"user")?pseudo(v):v;
+  const st=makeStream(d.file,d.dataStart,d.file.size,d.delim,r=>{if(!nonEmpty(r))return;rowsSeen++;
+    const fp=get(r,m,"FolderPath");if(prefix&&!low(fp).startsWith(prefix))return;
+    const layer=get(r,m,"PermissionLayer");if(layerF&&layer!==layerF)return;
+    if(boolVal(get(r,m,"IsInherited"))===true&&get(r,m,"RelativePath")!==".")return;
+    rowsUsed++;
+    const role=get(r,m,"Role"),rid2=get(r,m,"RoleIdentity")||role,rc=roleClassOf(r,m),cls=rowClass(r,m),rank=CLASS_RANK[cls]??1,deny=low(get(r,m,"AccessType")).includes("deny");
+    const user=get(r,m,"UserOrMember"),mt=get(r,m,"MemberType")||"",mtl=low(mt),isPerson=/^(user|localuser)$/.test(mtl),isAcct=/^(user|localuser|computer|serviceaccount)$/.test(mtl);
+    // Ordner
+    let F=folders.get(fp);if(!F){F={drive:get(r,m,"Drive"),server:get(r,m,"FileServer"),share:get(r,m,"ShareName"),broken:false,owner:"",aces:new Map()};folders.set(fp,F)}
+    if(boolVal(get(r,m,"InheritanceBroken"))===true)F.broken=true;
+    const ak=layer+"|"+role+"|"+(deny?"D":"A")+"|"+cls;let A=F.aces.get(ak);if(!A){A={layer,role,identity:rid2,rc,cls,rank,deny,appliesTo:get(r,m,"AppliesTo"),inh:boolVal(get(r,m,"IsInherited"))===true,members:0,persons:0};F.aces.set(ak,A)}
+    A.members++;if(isPerson)A.persons++;
+    // Rolle
+    let R=roles.get(role);if(!R){R={identity:rid2,rc,type:get(r,m,"RoleType"),scope:get(r,m,"RoleScope"),cat:get(r,m,"RoleCategory"),sid:get(r,m,"RoleSID"),members:new Map(),folders:new Map(),deny:0};roles.set(role,R)}
+    if(deny)R.deny++;const rf=R.folders.get(fp);if(!rf||rf.rank<rank)R.folders.set(fp,{rank,cls,layer,deny});
+    if(user&&isAcct&&user!==role){let M=R.members.get(user);if(!M){M={name:pu(get(r,m,"MemberName"),mt),type:mt,enabled:boolVal(get(r,m,"MemberEnabled")),inact:get(r,m,"MemberInactiveDays"),via:new Set()};R.members.set(user,M)}const gp=get(r,m,"GroupPath");if(gp&&gp!==role&&M.via.size<5)M.via.add(gp)}
+    // Benutzer
+    if(user&&isAcct){let U=users.get(user);if(!U){U={name:pu(get(r,m,"MemberName"),mt),type:mt,enabled:boolVal(get(r,m,"MemberEnabled")),inact:get(r,m,"MemberInactiveDays"),admin:get(r,m,"MemberAdminCount"),direct:false,roles:new Map(),access:new Map()};users.set(user,U)}
+      if(boolVal(get(r,m,"DirectAssignment"))===true&&user===role)U.direct=true;
+      if(!deny){const ur=U.roles.get(role);if(!ur||ur<rank)U.roles.set(role,rank)}else if(!U.roles.has(role))U.roles.set(role,0);
+      const key=fp+"|"+layer;let ua=U.access.get(key);
+      if(!ua){if(pairs>=PAIR_CAP){truncated=true}else{pairs++;ua={fp,layer,rank:deny?-1:rank,cls:deny?"DENY":cls,deny,roles:new Set([role])};U.access.set(key,ua)}}
+      else{if(deny){ua.deny=true;ua.cls="DENY";ua.rank=-1}else if(!ua.deny&&rank>ua.rank){ua.rank=rank;ua.cls=cls}if(ua.roles.size<6)ua.roles.add(role)}}
+  });
+  (function step(){let more=true;try{more=st.step()}catch(err){postMessage({type:"accessResult",requestId:rid,error:err.message});return}const pct=Math.floor((st.offset-d.dataStart)/Math.max(1,d.file.size-d.dataStart)*100);if(pct!==last){last=pct;postMessage({type:"scanProgress",dataset:"access",pct,requestId:rid})}if(more)setTimeout(step,0);else finish()})();
+  function finish(){
+    // Roll-up je Benutzer: Unterordner entfallen, wenn ein Vorfahr dasselbe/höheres Recht auf derselben Ebene gibt
+    const rollup=U=>{const list=[...U.access.values()].sort((a,b)=>a.fp.length-b.fp.length||a.fp.localeCompare(b.fp));const kept=new Map(),out=[];for(const a of list){const anc=ancestorsOf(a.fp).slice(1);let covered=false;for(const p of anc){const k=kept.get(low(p)+"|"+a.layer);if(k&&!a.deny&&!k.deny&&k.rank>=a.rank){covered=true;break}}if(!covered){kept.set(low(a.fp)+"|"+a.layer,a);out.push(a)}}return out};
+    const fOut=[...folders.entries()].sort((a,b)=>a[0].localeCompare(b[0],"de")).map(([fp,F])=>({fp,drive:F.drive,server:F.server,share:F.share,broken:F.broken,aces:[...F.aces.values()].sort((a,b)=>(a.layer>b.layer?-1:a.layer<b.layer?1:0)||(b.deny-a.deny)||(b.rank-a.rank)||a.role.localeCompare(b.role,"de"))}));
+    const rOut=[...roles.entries()].sort((a,b)=>a[0].localeCompare(b[0],"de")).map(([role,R])=>{const fl=[...R.folders.entries()].sort((a,b)=>a[0].localeCompare(b[0],"de"));const isUserRole=users.has(role)&&R.members.size===0;return{role:isUserRole?pu(role,users.get(role).type):role,identity:isUserRole?pu(R.identity,users.get(role).type):R.identity,rc:R.rc,type:R.type,scope:R.scope,cat:R.cat,deny:R.deny,memberCount:R.members.size,members:[...R.members.entries()].sort((a,b)=>a[0].localeCompare(b[0],"de")).map(([u,M])=>({u:pu(u,M.type),name:M.name,type:M.type,enabled:M.enabled,inact:M.inact,via:[...M.via]})),folderCount:fl.length,maxRank:Math.max(0,...fl.map(x=>x[1].rank)),folders:fl.map(([fp,x])=>({fp,cls:x.cls,layer:x.layer,deny:x.deny}))}});
+    const uOut=[...users.entries()].sort((a,b)=>a[0].localeCompare(b[0],"de")).map(([u,U])=>{const acc=rollup(U);return{u:pu(u,U.type),name:U.name,type:U.type,enabled:U.enabled,inact:U.inact,admin:U.admin,direct:U.direct,roles:[...U.roles.entries()].sort((a,b)=>b[1]-a[1]||a[0].localeCompare(b[0],"de")).map(([r,k])=>({role:users.has(r)?pu(r,U.type):r,rank:k})),accessTotal:U.access.size,access:acc.map(a=>({fp:a.fp,layer:a.layer,cls:a.cls,deny:a.deny,roles:[...a.roles].map(r=>users.has(r)?pu(r,U.type):r)}))}});
+    const shares=new Map();for(const f of fOut){const k=f.drive+"|"+f.server+"|"+f.share;if(!shares.has(k))shares.set(k,{drive:f.drive,server:f.server,share:f.share,folders:0,broken:0});const s=shares.get(k);s.folders++;if(f.broken)s.broken++}
+    const classCounts={};for(const f of fOut)for(const a of f.aces)classCounts[a.deny?"DENY":a.cls]=(classCounts[a.deny?"DENY":a.cls]||0)+1;
+    postMessage({type:"accessResult",requestId:rid,rowsSeen,rowsUsed,pairs,truncated,shares:[...shares.values()],folders:fOut,roles:rOut,users:uOut,classCounts,pseudo:pseudoOn});
+  }
+}
+
+/* ---------- Export ---------- */
+function csvQ(v){return `"${String(v??"").replace(/"/g,'""')}"`}
+function exportFiltered(msg){
+  const ds=msg.dataset,rid=msg.requestId,f=msg.filters||{};
+  if(ds!=="findings"&&!VIRTUAL[ds]&&!datasets[ds]){postMessage({type:"exportResult",requestId:rid,blob:new Blob([]),fileName:msg.fileName});return}
+  resolveFilter(ds,f,()=>true,pct=>postMessage({type:"exportProgress",requestId:rid,phase:"filter",pct}),(indices,total)=>{
+    const h=headersOf(ds).filter(x=>!x.startsWith("_")),hi=headersOf(ds).map((x,i)=>x.startsWith("_")?-1:i).filter(i=>i>=0);let blob=new Blob(["\uFEFF"+h.map(csvQ).join(";")+"\r\n"],{type:"text/csv;charset=utf-8"}),buf="",i=0;const BATCH=5000,H=headersOf(ds);
+    (function step(){try{let rows=fetchRows(ds,indices,i,Math.min(total,i+BATCH));if(msg.pseudo)rows=rows.map(r=>pseudoRow(H,r));for(const r of rows)buf+=hi.map(j=>csvQ(r[j])).join(";")+"\r\n";i+=BATCH;if(buf.length>4000000){blob=new Blob([blob,buf],{type:"text/csv;charset=utf-8"});buf=""}}
+      catch(err){postMessage({type:"error",message:err.message,stack:err.stack||"",fileName:msg.fileName});return}
+      postMessage({type:"exportProgress",requestId:rid,phase:"write",pct:total?Math.min(100,Math.floor(i/total*100)):100});
+      if(i<total)setTimeout(step,0);else{if(buf)blob=new Blob([blob,buf],{type:"text/csv;charset=utf-8"});postMessage({type:"exportResult",requestId:rid,blob,fileName:msg.fileName})}})();
+  });
+}
+
+/* ---------- Dashboard ---------- */
+function memInfo(){let idx=0;for(const d of Object.values(datasets))idx+=d.anchors.n*8;let fb=0;for(const b of fs_.buckets)fb+=b.n*8;return{indexBytes:idx,findingBytes:fb,dedupKeys:fs_.seen.size}}
+function dashboard(){const c={};for(const k of Object.keys(FILE_TYPES).map(k=>FILE_TYPES[k]).concat(["compare"]))c[k]=datasets[k]?.count||0;c.findings=fs_.total;let top=[];try{top=materializeFindings(Array.from({length:Math.min(8,fs_.total)},(_,i)=>i))}catch(e){}return{counts:c,matrixMetrics:stats.matrixMetrics||{roles:0,users:0,topRoles:[],classCounts:{}},findingTop:top,findingHeaders:FINDING_HEADERS,findingStats:findingStats(),memory:memInfo(),files:Object.fromEntries(Object.entries(datasets).map(([k,d])=>[k,{name:d.name,sha256:d.sha256,count:d.count,size:d.size,headers:d.headers,preview:d.preview}]))}}
+function clearCaches(){for(const k of Object.keys(queryCache))delete queryCache[k]}
+
+onmessage=e=>{const msg=e.data;try{
+  if(msg.type==="load"){
+    const ds=msg.as||FILE_TYPES[msg.file.name.toLowerCase()];if(!ds){postMessage({type:"ignored",fileName:msg.file.name});return}
+    const start=Date.now(),wasLoaded=!!datasets[ds];delete datasets[ds];clearCaches();sollResult=null;if(ds==="matrix"||ds==="compare")deltaResult=null;
+    const d=loadFile(msg.file,ds,!wasLoaded);datasets[ds]=d;
+    if(wasLoaded&&DSC[ds]!==undefined)rebuildFindings();
+    options.findings=findingOptions();
+    postMessage({type:"loaded",dataset:ds,fileName:msg.file.name,rows:d.count,headers:d.headers,sha256:d.sha256,preview:d.preview,options:options[ds]||{},findingOptions:options.findings,dashboard:dashboard(),elapsedMs:Date.now()-start});
+  }
+  else if(msg.type==="query")queryDataset(msg);
+  else if(msg.type==="collect")collect(msg);
+  else if(msg.type==="dashboard"){options.findings=findingOptions();postMessage({type:"dashboard",dashboard:dashboard(),options})}
+  else if(msg.type==="export")exportFiltered(msg);
+  else if(msg.type==="effective")effective(msg);
+  else if(msg.type==="access")accessReport(msg);
+  else if(msg.type==="soll"){setSoll(msg.entries||[]);postMessage({type:"sollLoaded",count:soll.length})}
+  else if(msg.type==="sollCompare")sollCompare(msg);
+  else if(msg.type==="delta")deltaCompare(msg);
+  else if(msg.type==="settings"){Object.assign(settings,msg.settings||{});if(msg.rebuild){rebuildFindings();options.findings=findingOptions();clearCaches();postMessage({type:"dashboard",dashboard:dashboard(),options})}}
+  else if(msg.type==="reset"){for(const o of [datasets,options,stats,queryCache])for(const k of Object.keys(o))delete o[k];latestQueryToken={};resetFindings();soll=null;sollResult=null;deltaResult=null;postMessage({type:"resetDone"})}
+}catch(err){postMessage({type:"error",message:err.message,stack:err.stack||"",fileName:msg.file?.name||""})}};
+</script>
+
+<script>
+"use strict";
+const worker=new Worker(URL.createObjectURL(new Blob([document.getElementById("workerCode").textContent],{type:"application/javascript"})));
+const KNOWN={"01_permission_matrix.csv":"matrix","02_ntfs_acl.csv":"ntfs","03_smb_share_acl.csv":"smb","04_ad_group_expansion.csv":"groups","05_inheritance_breaks.csv":"inheritance","06_orphaned_sids.csv":"orphans","07_errors.csv":"errors","08_summary.csv":"summary","09_runinfo.csv":"runinfo","10_folder_index.csv":"folders","11_principals.csv":"principals"};
+const DS=["matrix","ntfs","smb","groups","inheritance","orphans","errors","findings","folders","principals","soll","deltaAdded","deltaRemoved"];
+const SEV_ORDER=["Critical","High","Medium","Low","Info"];
+let lastTop=[],lastHeaders=[],manifest=null,manifestName="",runInfo=[],summaryRows=[],sollEntries=[],sollMeta=null,deltaMeta=null,reportCache={};
+const state={counts:{},loaded:new Map(),options:{},matrixMetrics:{roles:0,users:0,topRoles:[],classCounts:{}},findingStats:{bySev:{},byCat:{}},memory:{indexBytes:0,findingBytes:0,dedupKeys:0},files:{},pages:{},querySeq:0,current:{},exports:new Map(),review:new Map(),pseudo:false,fileHashes:{}};
+const fmt=n=>Number(n||0).toLocaleString("de-DE"),mib=b=>(b/1048576).toFixed(1)+" MiB",esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])),bval=s=>{const v=String(s??"").trim().toLowerCase();if(["true","wahr","yes","ja","1"].includes(v))return true;if(["false","falsch","no","nein","0"].includes(v))return false;return null};
+const $=id=>document.getElementById(id),low=v=>String(v??"").trim().toLowerCase();
+function status(t,err=false){$("importStatus").innerHTML=err?`<span style="color:var(--danger)">${esc(t)}</span>`:esc(t)}
+function progress(name,pct,rows,bytes,total){$("progressWrap").style.display="block";$("progressTitle").innerHTML=`<span class="busy-dot"></span> ${esc(name)}`;$("progressPct").textContent=`${pct} %`;$("progressBar").style.width=`${pct}%`;$("progressSub").textContent=`${fmt(rows)} Zeilen · ${mib(bytes)} / ${mib(total)}`}
+function hideProgress(){$("progressWrap").style.display="none"}
+function showTab(id){document.querySelectorAll(".tab").forEach(x=>x.classList.toggle("active",x.id===id));document.querySelectorAll(".nav").forEach(x=>x.classList.toggle("active",x.dataset.tab===id));if(DS.includes(id))requestPage(id);if(id==="nachweis")renderNachweis()}window.showTab=showTab;document.querySelectorAll(".nav").forEach(b=>b.onclick=()=>showTab(b.dataset.tab));
+function renderFiles(){$("fileList").innerHTML=[...state.loaded.entries()].map(([ds,f])=>{const v=verify(f.name,state.fileHashes[ds]);return`<span class="file-pill ${v.cls}" title="SHA-256 ${esc(state.fileHashes[ds]||"")}">${v.icon} ${esc(f.name)} · ${fmt(f.rows)} Zeilen · ${mib(f.size)}</span>`}).join("")+(manifest?`<span class="file-pill">📄 ${esc(manifestName)} (${Object.keys(manifest).length} Hashes)</span>`:"")}
+function verify(name,hash){if(!manifest)return{cls:"",icon:"○"};const h=manifest[name.toLowerCase()];if(!h)return{cls:"warn",icon:"?"};if(!hash)return{cls:"",icon:"○"};return h===hash.toLowerCase()?{cls:"ok",icon:"✓"}:{cls:"bad",icon:"✗"}}
+function setSel(id,vals,trunc){const e=$(id);if(!e)return;const old=e.value;e.innerHTML='<option value="">Alle</option>'+((vals||[]).map(v=>`<option value="${esc(v)}">${esc(v)}</option>`).join(""))+(trunc?'<option value="" disabled>… Liste gekürzt (Freitext nutzen)</option>':"");if([...e.options].some(o=>o.value===old))e.value=old}
+function applyOpts(){const o=state.options.matrix||{};setSel("mDrive",o.Drive,o.Drive_truncated);setSel("mServer",o.FileServer,o.FileServer_truncated);setSel("mShare",o.ShareName,o.ShareName_truncated);setSel("mRole",o.Role,o.Role_truncated);setSel("mRClass",o.RightsClass);setSel("mRoleClass",o.RoleClass);setSel("fCategory",(state.options.findings||{}).Category)}
+function mFilters(){return{search:mSearch.value.trim(),path:mPath.value.trim(),drive:mDrive.value,server:mServer.value,share:mShare.value,layer:mLayer.value,access:mAccess.value,role:mRole.value,member:mMember.value.trim(),rights:mRights.value.trim(),rclass:mRClass.value,roleclass:mRoleClass.value,direct:mDirect.value,broken:mBroken.value,enabled:mEnabled.value}}
+function fFilters(){return{severity:fSeverity.value,category:fCategory.value,search:fSearch.value.trim()}}
+function filters(ds){if(ds==="matrix")return mFilters();if(ds==="findings")return fFilters();const e=$(ds+"Search");return{search:e?e.value.trim():""}}
+function pg(ds){if(!state.pages[ds])state.pages[ds]={page:1,size:100,total:0};return state.pages[ds]}
+function requestPage(ds){if(!DS.includes(ds))return;const p=pg(ds),rid=++state.querySeq;state.current[ds]=rid;worker.postMessage({type:"query",dataset:ds,page:p.page,size:p.size,filters:filters(ds),requestId:rid,pseudo:state.pseudo});const i=$(ds+"Info");if(i)i.innerHTML='<span class="busy-dot"></span> Wird geladen …'}
+const timers={};function sched(ds,ms){clearTimeout(timers[ds]);timers[ds]=setTimeout(()=>{pg(ds).page=1;requestPage(ds)},ms)}
+["mSearch","mPath","mDrive","mServer","mShare","mLayer","mAccess","mRole","mMember","mRights","mRClass","mRoleClass","mDirect","mBroken","mEnabled"].forEach(id=>$(id).addEventListener("input",()=>sched("matrix",450)));
+["fSeverity","fCategory","fSearch"].forEach(id=>$(id).addEventListener("input",()=>sched("findings",400)));
+["ntfs","smb","groups","inheritance","orphans","errors","folders","principals","soll","deltaAdded","deltaRemoved"].forEach(ds=>{const e=$(ds+"Search");if(e)e.addEventListener("input",()=>sched(ds,450))});
+const CLASS_COLOR={FullControl:"bad",SpecialAclControl:"bad",Modify:"warn",ReadWrite:"warn",WriteOnly:"warn",ReadExecute:"ok",Read:"ok",None:"",Special:""};
+function cell(k,v,row,m){
+  if(k==="Severity")return`<span class="sev sev-${String(v).toLowerCase()}">${esc(v)}</span>`;
+  if(k==="AccessType")return`<span class="chip ${String(v).toLowerCase().includes("deny")?"bad":"ok"}">${esc(v)}</span>`;
+  if(["RightsClass","NTFS","SMB","Wirksam"].includes(k))return`<span class="chip ${CLASS_COLOR[v]||""}">${esc(v)}</span>`;
+  if(["RoleClass","MemberClass","IdentityClass","OwnerClass"].includes(k))return v==="Broad"?`<span class="chip bad">Broad</span>`:v==="Admin"?`<span class="chip warn">Admin</span>`:esc(v);
+  if(["OrphanedSID","DirectAssignment","IsInherited","InheritanceBroken","CanChangePermissions","IsReparsePoint"].includes(k)){const b=bval(v);return b===true?'<span class="chip bad">Ja</span>':b===false?'<span class="chip ok">Nein</span>':esc(v)}
+  if(k==="Complete"||k==="AccessBasedEnumeration"||k==="Zugriff"){const b=bval(v);return b===true?'<span class="chip ok">Ja</span>':b===false?'<span class="chip bad">Nein</span>':esc(v)}
+  if(k==="MemberEnabled"||k==="Enabled"){const b=bval(v);return b===true?'<span class="chip ok">Aktiv</span>':b===false?'<span class="chip bad">Deaktiviert</span>':esc(v)}
+  if(k==="Abweichung")return`<span class="sev sev-medium">${esc(v)}</span>`;
+  if(k==="Review"){const key=row[m._key],rv=state.review.get(key)||{};return`<select class="rv" data-key="${esc(key)}"><option value="">– offen –</option>${["Akzeptiert","Zu bereinigen","Falsch-positiv","In Klärung"].map(o=>`<option ${rv.status===o?"selected":""}>${o}</option>`).join("")}</select><input class="rvc" data-key="${esc(key)}" placeholder="Kommentar" value="${esc(rv.comment||"")}">`}
+  return esc(v)}
+const pref={matrix:["Drive","FileServer","ShareName","FolderPath","PermissionLayer","Role","RoleClass","GroupPath","UserOrMember","MemberName","MemberType","MemberEnabled","MemberInactiveDays","Rights","RightsClass","AppliesTo","AccessType","DirectAssignment","IsInherited","InheritanceBroken","CanChangePermissions","OrphanedSID"],ntfs:["Drive","FileServer","ShareName","FolderPath","Owner","Identity","PrincipalType","IdentityClass","Rights","RightsClass","AppliesTo","AccessType","IsInherited","InheritanceBroken","OrphanedSID"],smb:["Drive","FileServer","ShareName","SharePath","Identity","IdentityClass","AccessRight","RightsClass","AccessType","AccessBasedEnumeration","EncryptData","CachingMode"],groups:["RootGroup","GroupPath","GroupScope","GroupCategory","Member","MemberName","MemberType","MemberClass","Enabled","InactiveDays","SID"],findings:["Review","Severity","Category","Title","Drive","ShareName","Path","Role","UserOrMember","RightsClass","Detail"],folders:["Drive","FolderPath","Depth","Owner","OwnerType","OwnerClass","OwnerRisk","InheritanceBroken","ExplicitAceCount","InheritedAceCount","IsReparsePoint","AclStatus"],principals:["Identity","PrincipalType","IdentityClass","Enabled","InactiveDays","LastLogonDate","PasswordLastSet","AccountExpires","AdminCount","GroupScope","GroupCategory","OrphanedSID","Source"],soll:["Review","Abweichung","FolderPath","PermissionLayer","Role","RoleClass","RightsClass","SollPfad","SollRolle","SollMaxRechte","SollDataOwner"],deltaAdded:["FolderPath","PermissionLayer","Role","UserOrMember","RightsClass","AccessType","IsInherited"],deltaRemoved:["FolderPath","PermissionLayer","Role","UserOrMember","RightsClass","AccessType","IsInherited"]};
+function renderTable(ds,h,rows,total,page,size){const t=$(ds+"Table"),p=$(ds+"Pager");if(!t)return;if(!h.length){t.innerHTML='<tbody><tr><td class="empty">Keine Daten vorhanden.</td></tr></tbody>';p.innerHTML="";const i0=$(ds+"Info");if(i0)i0.textContent="";return}
+  const hidden=h.filter(x=>x.startsWith("_")),vis=h.filter(x=>!x.startsWith("_")),reviewable=h.includes("_key")&&(ds==="findings"||ds==="soll");
+  const cols=[...(pref[ds]||[]).filter(k=>vis.includes(k)||(k==="Review"&&reviewable)),...vis.filter(k=>!(pref[ds]||[]).includes(k))],m={};h.forEach((x,i)=>m[x]=i);
+  t.innerHTML=`<thead><tr>${cols.map(k=>`<th>${esc(k)}</th>`).join("")}</tr></thead><tbody>`+(rows.length?rows.map(r=>`<tr>${cols.map(k=>`<td class="${["FolderPath","Path","GroupPath","Detail","Error","Target","Via","SollPfad"].includes(k)?"wrap":""}">${cell(k,r[m[k]],r,m)}</td>`).join("")}</tr>`).join(""):`<tr><td class="empty" colspan="${cols.length}">Keine Treffer.</td></tr>`)+"</tbody>";
+  t.querySelectorAll(".rv").forEach(s=>s.onchange=e=>setReview(e.target.dataset.key,{status:e.target.value}));t.querySelectorAll(".rvc").forEach(s=>s.onchange=e=>setReview(e.target.dataset.key,{comment:e.target.value}));
+  const pages=Math.max(1,Math.ceil(total/size)),s=total?((page-1)*size+1):0,e=Math.min(page*size,total);
+  p.innerHTML=`<span class="info">${fmt(s)}–${fmt(e)} von ${fmt(total)}</span><label class="small">Zeilen <select id="${ds}PS"><option>50</option><option ${size===100?"selected":""}>100</option><option ${size===250?"selected":""}>250</option><option ${size===500?"selected":""}>500</option></select></label><button id="${ds}First" ${page<=1?"disabled":""}>«</button><button id="${ds}Prev" ${page<=1?"disabled":""}>‹</button><span class="small">Seite <input id="${ds}PG" type="number" min="1" max="${pages}" value="${page}" class="pgin"> / ${fmt(pages)}</span><button id="${ds}Next" ${page>=pages?"disabled":""}>›</button><button id="${ds}Last" ${page>=pages?"disabled":""}>»</button>`;
+  $(ds+"First").onclick=()=>{pg(ds).page=1;requestPage(ds)};$(ds+"Prev").onclick=()=>{pg(ds).page--;requestPage(ds)};$(ds+"Next").onclick=()=>{pg(ds).page++;requestPage(ds)};$(ds+"Last").onclick=()=>{pg(ds).page=pages;requestPage(ds)};$(ds+"PG").onchange=e=>{pg(ds).page=Math.min(pages,Math.max(1,Number(e.target.value)||1));requestPage(ds)};$(ds+"PS").onchange=e=>{pg(ds).size=Number(e.target.value);pg(ds).page=1;requestPage(ds)};
+  const info=$(ds+"Info");if(info)info.textContent=`${fmt(total)} Zeilen`}
+function setReview(key,patch){const cur=state.review.get(key)||{};const n={...cur,...patch,reviewer:$("rvReviewer").value.trim(),date:new Date().toISOString().slice(0,10)};if(!n.status&&!n.comment)state.review.delete(key);else state.review.set(key,n);$("reviewCount").textContent=fmt(state.review.size)}
+function sev(v){return`<span class="sev sev-${String(v).toLowerCase()}">${esc(v)}</span>`}
+function dash(d){if(!d)return;if(d.findingTop){lastTop=d.findingTop;lastHeaders=d.findingHeaders||[]}state.counts=d.counts||state.counts;state.matrixMetrics=d.matrixMetrics||state.matrixMetrics;state.memory=d.memory||state.memory;state.findingStats=d.findingStats||state.findingStats;state.files=d.files||state.files;
+  const c=state.counts,m=state.matrixMetrics,mem=state.memory,fsx=state.findingStats;
+  kMatrix.textContent=fmt(c.matrix);kRoles.textContent=fmt(m.roles);kUsers.textContent=fmt(m.users);kFindings.textContent=fmt(c.findings);kCritical.textContent=fmt((fsx.bySev||{}).Critical||0);kHigh.textContent=fmt((fsx.bySev||{}).High||0);
+  ["Matrix","Ntfs","Smb","Groups","Inheritance","Orphans","Errors","Findings","Folders","Principals"].forEach(x=>{const e=$("c"+x);if(e)e.textContent=fmt(c[x.toLowerCase()]||0)});cDash.textContent=state.loaded.size?"OK":"–";
+  const bars=m.topRoles||[],mx=bars.length?bars[0][1]:1;roleBars.innerHTML=bars.length?bars.map(([n,v])=>`<div class="bar-row"><div title="${esc(n)}">${esc(n.length>28?n.slice(0,28)+"…":n)}</div><div class="bar"><span style="width:${v/mx*100}%"></span></div><div>${fmt(v)}</div></div>`).join(""):'<div class="empty">Noch keine Matrix geladen.</div>';
+  const cc=m.classCounts||{},order=["FullControl","SpecialAclControl","Modify","ReadWrite","WriteOnly","ReadExecute","Read","Special","None"],cmx=Math.max(1,...order.map(k=>cc[k]||0));classBars.innerHTML=Object.keys(cc).length?order.filter(k=>cc[k]).map(k=>`<div class="bar-row"><div><span class="chip ${CLASS_COLOR[k]||""}">${k}</span></div><div class="bar"><span style="width:${(cc[k]||0)/cmx*100}%"></span></div><div>${fmt(cc[k])}</div></div>`).join(""):'<div class="empty">–</div>';
+  const cat=fsx.byCat||{},cats=Object.entries(cat).filter(x=>x[1]).sort((a,b)=>b[1]-a[1]),catmx=cats.length?cats[0][1]:1;catBars.innerHTML=cats.length?cats.map(([n,v])=>`<div class="bar-row"><div>${esc(n)}</div><div class="bar"><span style="width:${v/catmx*100}%"></span></div><div>${fmt(v)}</div></div>`).join(""):'<div class="empty">–</div>';
+  let total=0;state.loaded.forEach(f=>total+=f.size);const cover=summaryRows.length?summaryRows.map(r=>`${esc(r.Drive)}: ${bval(r.Complete)===true?'<span class="chip ok">vollständig</span>':bval(r.Complete)===false?`<span class="chip bad">unvollständig</span> (${esc(r.EnumerationErrors||"?")} Enum-Fehler, ${esc(r.AclErrors||"?")} ACL-Fehler)`:esc(r.AclErrors||"")+" ACL-Fehler"}`).join("<br>"):"–";
+  auditStatus.innerHTML=`<div>Geladene Dateien</div><div>${state.loaded.size} (${mib(total)} auf Datenträger)</div><div>Abdeckung lt. Summary</div><div>${cover}</div><div>Integrität (Manifest)</div><div>${integritySummary()}</div><div>SMB-Einträge</div><div>${fmt(c.smb)}</div><div>NTFS-Einträge</div><div>${fmt(c.ntfs)}</div><div>Ordner im Index</div><div>${fmt(c.folders)}</div><div>Principals</div><div>${fmt(c.principals)}</div><div>Vererbungsbrüche</div><div>${fmt(c.inheritance)}</div><div>Verwaiste SIDs</div><div>${fmt(c.orphans)}</div><div>Audit-Fehler</div><div>${fmt(c.errors)}</div><div>Zeilenindex im RAM</div><div>${mib(mem.indexBytes)}</div><div>Prüfhinweise im RAM</div><div>${mib(mem.findingBytes)} (${fmt(mem.dedupKeys)} Schlüssel)</div>`;
+  const h=d.findingHeaders||lastHeaders,mi={};h.forEach((x,i)=>mi[x]=i);const top=d.findingTop||lastTop;topFindings.innerHTML=top.length?`<table><thead><tr><th>Priorität</th><th>Kategorie</th><th>Hinweis</th><th>Pfad</th></tr></thead><tbody>`+top.map(r=>`<tr><td>${sev(r[mi.Severity])}</td><td>${esc(r[mi.Category])}</td><td>${esc(r[mi.Title])}</td><td class="wrap">${esc(r[mi.Path])}</td></tr>`).join("")+"</tbody></table>":'<div class="empty">Keine automatischen Prüfhinweise vorhanden.</div>';
+  resetBtn.disabled=state.loaded.size===0;const busy=state.exports.size>0;exportMatrix.disabled=!c.matrix||busy;exportFindings.disabled=!c.findings||busy;exportSoll.disabled=!sollMeta||busy;exportDeltaA.disabled=exportDeltaR.disabled=!deltaMeta||busy;btnSollRun.disabled=!c.matrix||!sollEntries.length;btnDelta.disabled=!c.matrix||!c.compare;btnReport.disabled=!state.loaded.size;btnAccessReport.disabled=!c.matrix;effRun.disabled=!c.matrix;}
+function integritySummary(){if(!manifest)return'<span class="small">kein Manifest geladen</span>';let ok=0,bad=0,miss=0;state.loaded.forEach((f,ds)=>{const v=verify(f.name,state.fileHashes[ds]);if(v.icon==="✓")ok++;else if(v.icon==="✗")bad++;else miss++});return`${ok?`<span class="chip ok">${ok} bestätigt</span> `:""}${bad?`<span class="chip bad">${bad} ABWEICHEND</span> `:""}${miss?`<span class="chip">${miss} ohne Eintrag</span>`:""}`}
+let queue=[],fileSizes=new Map(),processing=false;
+function loadNext(){if(processing)return;const f=queue.shift();if(!f){hideProgress();worker.postMessage({type:"dashboard"});const active=document.querySelector(".tab.active");if(active&&DS.includes(active.id))requestPage(active.id);return}processing=true;progress(f.file.name,0,0,0,f.file.size);worker.postMessage({type:"load",file:f.file,as:f.as})}
+async function handleFiles(list,as){const files=[...list];const man=files.find(f=>/^99_manifest\.sha256$/i.test(f.name));if(man){const txt=await man.text();manifest={};txt.split(/\r?\n/).forEach(l=>{const mm=l.match(/^([0-9a-fA-F]{64})\s+\*?(.+)$/);if(mm)manifest[mm[2].trim().toLowerCase()]=mm[1].toLowerCase()});manifestName=man.name;renderFiles()}
+  const known=as?files.filter(f=>/\.csv$/i.test(f.name)):files.filter(f=>KNOWN[f.name.toLowerCase()]);if(!known.length){status(as?"Bitte eine CSV-Datei wählen.":"Keine bekannten Audit-CSV-Dateien gefunden (erwartet: 01_permission_matrix.csv … 11_principals.csv, 99_manifest.sha256).",!man);return}
+  const order=Object.keys(KNOWN);known.sort((a,b)=>order.indexOf(a.name.toLowerCase())-order.indexOf(b.name.toLowerCase()));known.forEach(f=>{fileSizes.set(f.name,f.size);queue.push({file:f,as})});status(`${known.length} Datei(en) in Warteschlange.`);loadNext()}
+function parseSmallCsv(text){const t=text.replace(/^\uFEFF/,"");const first=t.split(/\r?\n/).find(x=>x.trim())||"";const d=[";",",","\t"].map(c=>[c,(first.match(new RegExp(c==="\t"?"\t":"\\"+c,"g"))||[]).length]).sort((a,b)=>b[1]-a[1])[0][0];const rows=[];let row=[],f="",q=false;for(let i=0;i<t.length;i++){const ch=t[i];if(q){if(ch==='"'){if(t[i+1]==='"'){f+='"';i++}else q=false}else f+=ch}else{if(ch==='"')q=true;else if(ch===d){row.push(f);f=""}else if(ch==="\n"){row.push(f.replace(/\r$/,""));rows.push(row);row=[];f=""}else f+=ch}}if(f||row.length){row.push(f.replace(/\r$/,""));rows.push(row)}const h=(rows.shift()||[]).map(x=>x.trim());return rows.filter(r=>r.some(x=>x!=="")).map(r=>Object.fromEntries(h.map((k,i)=>[k,r[i]??""])))}
+worker.onmessage=e=>{const msg=e.data;
+  if(msg.type==="progress")progress(msg.fileName,msg.pct,msg.rows,msg.bytes,msg.total);
+  else if(msg.type==="loaded"){processing=false;state.loaded.set(msg.dataset,{name:msg.fileName,rows:msg.rows,size:fileSizes.get(msg.fileName)||0});state.fileHashes[msg.dataset]=msg.sha256;state.options[msg.dataset]=msg.options||{};state.options.findings=msg.findingOptions||state.options.findings||{};
+    if(msg.dataset==="runinfo"){const mm={};msg.headers.forEach((x,i)=>mm[x]=i);runInfo=(msg.preview||[]).map(r=>({Key:r[mm.Key],Value:r[mm.Value]}))}
+    if(msg.dataset==="summary"){const mm={};msg.headers.forEach((x,i)=>mm[x]=i);summaryRows=(msg.preview||[]).map(r=>Object.fromEntries(msg.headers.map((k,i)=>[k,r[i]])))}
+    renderFiles();applyOpts();dash(msg.dashboard);const v=verify(msg.fileName,msg.sha256);status(`${msg.fileName}: ${fmt(msg.rows)} Zeilen in ${(msg.elapsedMs/1000).toFixed(1)} s indiziert. SHA-256 ${msg.sha256.slice(0,16)}… ${v.icon==="✓"?"stimmt mit Manifest überein":v.icon==="✗"?"WEICHT VOM MANIFEST AB":""}`,v.icon==="✗");loadNext()}
+  else if(msg.type==="ignored"){processing=false;loadNext()}
+  else if(msg.type==="scanProgress"){if(msg.dataset==="effective"){effStatus.innerHTML=`<span class="busy-dot"></span> Matrix wird durchsucht … ${msg.pct} %`;return}if(msg.dataset==="soll"){sollStatus.innerHTML=`<span class="busy-dot"></span> Abgleich läuft … ${msg.pct} %`;return}if(msg.dataset==="access"){btnAccessReport.textContent=`Sammle … ${msg.pct} %`;return}if(msg.dataset==="delta"){deltaStatus.innerHTML=`<span class="busy-dot"></span> Hashing ${esc(msg.phase)} … ${msg.pct} %`;return}if(state.current[msg.dataset]!==msg.requestId)return;const i=$(msg.dataset+"Info");if(i)i.innerHTML=`<span class="busy-dot"></span> Filter wird ausgewertet … ${msg.pct} %`}
+  else if(msg.type==="queryResult"){if(state.current[msg.dataset]!==msg.requestId)return;const p=pg(msg.dataset);p.page=msg.page;p.size=msg.size;p.total=msg.total;renderTable(msg.dataset,msg.headers,msg.rows,msg.total,msg.page,msg.size)}
+  else if(msg.type==="dashboard"){state.options=msg.options||state.options;applyOpts();dash(msg.dashboard)}
+  else if(msg.type==="exportProgress"){const meta=state.exports.get(msg.requestId);if(meta)meta.btn.textContent=`${msg.phase==="filter"?"Filtern":"Schreiben"} … ${msg.pct} %`}
+  else if(msg.type==="exportResult"){const meta=state.exports.get(msg.requestId);if(!meta)return;state.exports.delete(msg.requestId);meta.btn.textContent=meta.label;dash({counts:state.counts,matrixMetrics:state.matrixMetrics,memory:state.memory,findingTop:lastTop,findingHeaders:lastHeaders});download(msg.blob,msg.fileName||meta.name)}
+  else if(msg.type==="effectiveResult"){if(msg.error){effStatus.innerHTML=`<span style="color:var(--danger)">${esc(msg.error)}</span>`;return}effStatus.textContent=`${msg.rows.length} Principals aus ${msg.aceCount} relevanten ACEs`;effNotes.innerHTML=msg.notes.map(n=>`<div>${esc(n)}</div>`).join("");const h=msg.headers,m={};h.forEach((x,i)=>m[x]=i);effTable.innerHTML=`<thead><tr>${h.map(k=>`<th>${esc(k)}</th>`).join("")}</tr></thead><tbody>`+(msg.rows.length?msg.rows.map(r=>`<tr>${h.map(k=>`<td class="${k==="Via"?"wrap":""}">${cell(k,r[m[k]],r,m)}</td>`).join("")}</tr>`).join(""):'<tr><td class="empty" colspan="10">Keine Berechtigungen gefunden.</td></tr>')+"</tbody>";reportCache.effective={path:msg.path,headers:h,rows:msg.rows,notes:msg.notes};effExport.disabled=!msg.rows.length}
+  else if(msg.type==="sollLoaded"){sollStatus.textContent=`${msg.count} Soll-Einträge geladen.`;dash({counts:state.counts,findingTop:lastTop,findingHeaders:lastHeaders})}
+  else if(msg.type==="sollResult"){if(msg.error){sollStatus.innerHTML=`<span style="color:var(--danger)">${esc(msg.error)}</span>`;return}sollMeta=msg;sollStatus.innerHTML=`${fmt(msg.total)} Abweichungen: `+msg.counts.map(([t,n])=>`${esc(t)}: <b>${fmt(n)}</b>`).join(" · ")+(msg.unused.length?`<br>${msg.unused.length} Soll-Einträge ohne Treffer im Ist (nicht vergeben): ${msg.unused.slice(0,10).map(u=>esc((u.Path||u.Pfad)+" / "+(u.Role||u.Rolle))).join(", ")}${msg.unused.length>10?" …":""}`:"");dash({counts:state.counts,findingTop:lastTop,findingHeaders:lastHeaders});pg("soll").page=1;requestPage("soll")}
+  else if(msg.type==="deltaResult"){if(msg.error){deltaStatus.innerHTML=`<span style="color:var(--danger)">${esc(msg.error)}</span>`;return}deltaMeta=msg;deltaStatus.innerHTML=`Aktuell ${fmt(msg.current)} Zeilen, Vergleich (${esc(msg.compareName)}) ${fmt(msg.compare)} Zeilen → <b>${fmt(msg.added)} neu</b>, <b>${fmt(msg.removed)} entfernt</b>.`;dash({counts:state.counts,findingTop:lastTop,findingHeaders:lastHeaders});pg("deltaAdded").page=1;requestPage("deltaAdded");pg("deltaRemoved").page=1;requestPage("deltaRemoved")}
+  else if(msg.type==="collectProgress"){btnReport.textContent=`Sammle … ${msg.pct} %`}
+  else if(msg.type==="accessResult"){const cb=reportCache.pending&&reportCache.pending[msg.requestId];if(cb){delete reportCache.pending[msg.requestId];cb(msg)}}
+  else if(msg.type==="collectResult"){const cb=reportCache.pending&&reportCache.pending[msg.requestId];if(cb){delete reportCache.pending[msg.requestId];cb(msg)}}
+  else if(msg.type==="resetDone"){processing=false;queue=[];fileSizes.clear();state.loaded.clear();state.options={};state.pages={};state.current={};state.exports.clear();state.fileHashes={};state.review.clear();state.counts={};state.matrixMetrics={roles:0,users:0,topRoles:[],classCounts:{}};state.findingStats={bySev:{},byCat:{}};state.memory={indexBytes:0,findingBytes:0,dedupKeys:0};manifest=null;runInfo=[];summaryRows=[];sollEntries=[];sollMeta=null;deltaMeta=null;reportCache={};renderFiles();applyOpts();dash({counts:{},matrixMetrics:state.matrixMetrics,memory:state.memory,findingTop:[],findingHeaders:[]});DS.forEach(ds=>renderTable(ds,[],[],0,1,100));effTable.innerHTML="";effNotes.innerHTML="";sollStatus.textContent="";deltaStatus.textContent="";$("reviewCount").textContent="0";status("Alle Daten, Index, Review und Prüfhinweise wurden aus dem Browser-Speicher entfernt.")}
+  else if(msg.type==="error"){processing=false;hideProgress();state.exports.forEach(m=>m.btn.textContent=m.label);state.exports.clear();btnReport.textContent="Nachweis-Report erzeugen";status(`Fehler${msg.fileName?" bei "+msg.fileName:""}: ${msg.message}${/NotReadable|not be read/i.test(msg.message)?" – wurde die Datei zwischenzeitlich verändert oder verschoben? Bitte erneut laden.":""}`,true);console.error(msg.stack);loadNext()}
+};
+function download(blob,name){const url=URL.createObjectURL(blob),a=document.createElement("a");a.href=url;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),5000)}
+chooseFiles.onclick=()=>filesInput.click();chooseFolder.onclick=()=>folderInput.click();filesInput.onchange=e=>{handleFiles(e.target.files);e.target.value=""};folderInput.onchange=e=>{handleFiles(e.target.files);e.target.value=""};["dragenter","dragover"].forEach(n=>dropZone.addEventListener(n,e=>{e.preventDefault();dropZone.classList.add("drag")}));["dragleave","drop"].forEach(n=>dropZone.addEventListener(n,e=>{e.preventDefault();dropZone.classList.remove("drag")}));dropZone.addEventListener("drop",e=>handleFiles(e.dataTransfer.files));
+function exp(ds,name,btn){if(state.exports.size)return;const rid=++state.querySeq;state.exports.set(rid,{name,btn,label:btn.textContent});[exportMatrix,exportFindings,exportSoll,exportDeltaA,exportDeltaR].forEach(b=>b.disabled=true);worker.postMessage({type:"export",dataset:ds,filters:filters(ds),requestId:rid,fileName:name,pseudo:state.pseudo})}
+exportMatrix.onclick=()=>exp("matrix","Permission_Matrix_gefiltert.csv",exportMatrix);exportFindings.onclick=()=>exp("findings","Pruefhinweise.csv",exportFindings);exportSoll.onclick=()=>exp("soll","Soll_Ist_Abweichungen.csv",exportSoll);exportDeltaA.onclick=()=>exp("deltaAdded","Delta_neue_Berechtigungen.csv",exportDeltaA);exportDeltaR.onclick=()=>exp("deltaRemoved","Delta_entfernte_Berechtigungen.csv",exportDeltaR);
+resetBtn.onclick=()=>{if(confirm("Alle geladenen Daten, Index, Review-Stände und Prüfhinweise aus dem Browser entfernen?"))worker.postMessage({type:"reset"})};
+/* Pseudonymisierung */
+pseudoToggle.onchange=e=>{state.pseudo=e.target.checked;document.body.classList.toggle("pseudo",state.pseudo);const active=document.querySelector(".tab.active");if(active&&DS.includes(active.id))requestPage(active.id)};
+/* Einstellungen */
+btnSettings.onclick=()=>{const d=Number(inactiveDays.value)||90;worker.postMessage({type:"settings",settings:{inactiveDays:d,ignoreAdminInSoll:sollIgnoreAdmin.checked,requireSoll:sollRequire.checked},rebuild:true});status(`Einstellungen übernommen (Inaktivität ≥ ${d} Tage). Prüfhinweise werden neu berechnet …`)};
+/* Wirksame Berechtigung */
+effRun.onclick=()=>{const p=effPath.value.trim();if(!p)return;const rid=++state.querySeq;effStatus.innerHTML='<span class="busy-dot"></span> Starte …';worker.postMessage({type:"effective",path:p,requestId:rid,pseudo:state.pseudo})};effPath.addEventListener("keydown",e=>{if(e.key==="Enter")effRun.onclick()});
+effExport.onclick=()=>{const c=reportCache.effective;if(!c)return;const csv="\uFEFF"+[["Ordner",c.path],[]].concat([c.headers],c.rows).map(r=>r.map(v=>`"${String(v??"").replace(/"/g,'""')}"`).join(";")).join("\r\n");download(new Blob([csv],{type:"text/csv;charset=utf-8"}),"Wirksame_Berechtigung.csv")};
+document.addEventListener("click",e=>{const b=e.target.closest("[data-eff]");if(b){effPath.value=b.dataset.eff;showTab("effective");effRun.onclick()}});
+/* Soll */
+sollInput.onchange=async e=>{const f=e.target.files[0];if(!f)return;sollEntries=parseSmallCsv(await f.text());worker.postMessage({type:"soll",entries:sollEntries});sollStatus.textContent=`${f.name}: ${sollEntries.length} Einträge …`;e.target.value=""};
+btnSollTemplate.onclick=()=>download(new Blob(["\uFEFF"+["Path;Role;MaxRights;DataOwner;Comment","\\\\fileserver\\Share;DOM\\ROLE_Share_R;Read;Max Mustermann;Basisrecht alle Fachbereiche","\\\\fileserver\\Share\\Finanzen;DOM\\ROLE_Finanzen_RW;Modify;Erika Musterfrau;Fachbereich Finanzen","\\\\fileserver\\Share\\Finanzen;DOM\\ROLE_Finanzen_R;Read;Erika Musterfrau;","\\\\fileserver\\Share\\Public;*;Read;IT;Bewusst für alle Mitarbeiter (Need-to-know dokumentiert)"].join("\r\n")],{type:"text/csv;charset=utf-8"}),"Soll_Berechtigungskonzept_Vorlage.csv");
+btnSollRun.onclick=()=>{const rid=++state.querySeq;worker.postMessage({type:"sollCompare",requestId:rid})};
+/* Delta */
+compareInput.onchange=e=>{const f=e.target.files[0];if(!f)return;handleFiles([f],"compare");e.target.value=""};
+btnDelta.onclick=()=>{const rid=++state.querySeq;deltaStatus.innerHTML='<span class="busy-dot"></span> Starte …';worker.postMessage({type:"delta",requestId:rid})};
+/* Review speichern / laden */
+btnReviewExport.onclick=()=>{const obj={format:"fsaudit-review",version:1,exported:new Date().toISOString(),reviewer:$("rvReviewer").value.trim(),runId:(runInfo.find(x=>x.Key==="RunId")||{}).Value||"",items:[...state.review.entries()].map(([key,v])=>({key,...v}))};download(new Blob([JSON.stringify(obj,null,1)],{type:"application/json"}),`Review_${obj.runId||"audit"}.json`)};
+reviewInput.onchange=async e=>{const f=e.target.files[0];if(!f)return;try{const obj=JSON.parse(await f.text());if(obj.format!=="fsaudit-review")throw new Error("Kein Review-Export.");let n=0;for(const it of obj.items||[]){state.review.set(it.key,{status:it.status,comment:it.comment,reviewer:it.reviewer,date:it.date});n++}$("reviewCount").textContent=fmt(state.review.size);status(`${n} Review-Einträge importiert${obj.runId?" (Lauf "+obj.runId+")":""}.`);const a=document.querySelector(".tab.active");if(a&&DS.includes(a.id))requestPage(a.id)}catch(err){status("Review-Import fehlgeschlagen: "+err.message,true)}e.target.value=""};
+/* Nachweis-Report */
+function collectAsync(dataset,filtersObj,limit){return new Promise(res=>{const rid=++state.querySeq;reportCache.pending=reportCache.pending||{};reportCache.pending[rid]=res;worker.postMessage({type:"collect",dataset,filters:filtersObj,limit,requestId:rid,pseudo:state.pseudo})})}
+function renderNachweis(){const ri=runInfo.length?`<table><tbody>${runInfo.map(r=>`<tr><td>${esc(r.Key)}</td><td class="wrap">${esc(state.pseudo&&r.Key==="ExecutedBy"?"(pseudonymisiert)":r.Value)}</td></tr>`).join("")}</tbody></table>`:'<div class="empty">09_RunInfo.csv nicht geladen (Skript v1.3 erforderlich).</div>';runInfoBox.innerHTML=ri;
+  const files=[...state.loaded.entries()].map(([ds,f])=>{const v=verify(f.name,state.fileHashes[ds]);return`<tr><td>${esc(f.name)}</td><td>${fmt(f.rows)}</td><td>${mib(f.size)}</td><td class="wrap" style="font-family:monospace;font-size:10px">${esc(state.fileHashes[ds]||"")}</td><td>${v.icon==="✓"?'<span class="chip ok">bestätigt</span>':v.icon==="✗"?'<span class="chip bad">ABWEICHUNG</span>':v.icon==="?"?'<span class="chip warn">nicht im Manifest</span>':'<span class="chip">kein Manifest</span>'}</td></tr>`}).join("");
+  integrityBox.innerHTML=files?`<table><thead><tr><th>Datei</th><th>Zeilen</th><th>Größe</th><th>SHA-256 (im Browser berechnet)</th><th>Manifest</th></tr></thead><tbody>${files}</tbody></table>`:'<div class="empty">Noch keine Dateien geladen.</div>';
+  summaryBox.innerHTML=summaryRows.length?`<table><thead><tr>${Object.keys(summaryRows[0]).map(k=>`<th>${esc(k)}</th>`).join("")}</tr></thead><tbody>${summaryRows.map(r=>`<tr>${Object.keys(r).map(k=>`<td class="${k.includes("Path")?"wrap":""}">${cell(k,r[k],[],{})}</td>`).join("")}</tr>`).join("")}</tbody></table>`:'<div class="empty">08_Summary.csv nicht geladen.</div>'}
+btnReport.onclick=async()=>{btnReport.disabled=true;const label=btnReport.textContent;try{
+  const fnd=await collectAsync("findings",{},Number(reportLimit.value)||5000);const sol=sollMeta?await collectAsync("soll",{},Number(reportLimit.value)||5000):null;
+  const now=new Date(),resp=$("rvResponsible").value.trim(),reviewer=$("rvReviewer").value.trim(),purpose=$("rvPurpose").value.trim();
+  const ri=Object.fromEntries(runInfo.map(r=>[r.Key,r.Value]));const st=x=>state.review.get(x)||{};
+  const rvStats={};state.review.forEach(v=>{rvStats[v.status||"offen"]=(rvStats[v.status||"offen"]||0)+1});
+  const fh=fnd.headers,fm={};fh.forEach((x,i)=>fm[x]=i);const sevCount=state.findingStats.bySev||{},catCount=state.findingStats.byCat||{};
+  const files=[...state.loaded.entries()].map(([ds,f])=>{const v=verify(f.name,state.fileHashes[ds]);return{name:f.name,rows:f.rows,size:f.size,hash:state.fileHashes[ds],ok:v.icon}});
+  const css=`body{font-family:Segoe UI,Arial,sans-serif;font-size:12px;color:#111;margin:24px}h1{font-size:20px}h2{font-size:15px;margin-top:26px;border-bottom:1px solid #999;padding-bottom:3px}table{border-collapse:collapse;width:100%;font-size:11px;margin:8px 0}th,td{border:1px solid #bbb;padding:4px 6px;text-align:left;vertical-align:top}th{background:#eee}.kv td:first-child{width:220px;font-weight:600}.sev-Critical{color:#b00020;font-weight:700}.sev-High{color:#c62828;font-weight:600}.sev-Medium{color:#b26a00}.sev-Low{color:#555}.ok{color:#2e7d32;font-weight:600}.bad{color:#b00020;font-weight:700}.note{background:#f4f4f4;border-left:4px solid #999;padding:8px;margin:10px 0}.mono{font-family:Consolas,monospace;font-size:10px}@media print{h2{page-break-after:avoid}tr{page-break-inside:avoid}}`;
+  const kv=(o)=>`<table class="kv"><tbody>${Object.entries(o).map(([k,v])=>`<tr><td>${esc(k)}</td><td>${esc(v)}</td></tr>`).join("")}</tbody></table>`;
+  const rowsHtml=(h,rows,cols)=>`<table><thead><tr>${cols.map(c=>`<th>${esc(c)}</th>`).join("")}</tr></thead><tbody>${rows.map(r=>{const m={};h.forEach((x,i)=>m[x]=i);const rv=st(r[m._key]);return`<tr>${cols.map(c=>c==="Status"?`<td>${esc(rv.status||"offen")}</td>`:c==="Kommentar"?`<td>${esc(rv.comment||"")}${rv.reviewer?" <i>("+esc(rv.reviewer)+", "+esc(rv.date||"")+")</i>":""}</td>`:`<td class="${c==="Severity"?"sev-"+r[m[c]]:""}">${esc(r[m[c]])}</td>`).join("")}</tr>`}).join("")}</tbody></table>`;
+  const html=`<!DOCTYPE html><html lang="de"><head><meta charset="utf-8"><title>Nachweis Berechtigungsaudit ${esc(ri.RunId||"")}</title><style>${css}</style></head><body>
+<h1>Nachweis: Berechtigungsaudit Fileserver</h1>
+<div class="note">Dieser Report dokumentiert die Überprüfung der Zugriffsberechtigungen (Need-to-know / Least Privilege) auf Basis eines automatisierten Audits. ${state.pseudo?"<b>Personenbezogene Kennungen sind pseudonymisiert (P-xxxx).</b>":"Der Report enthält personenbezogene Daten (Benutzerkennungen) und ist entsprechend zu schützen (Zweckbindung, Zugriffsbeschränkung, Löschfrist)."}</div>
+<h2>1. Rahmen</h2>${kv({"Erstellt am":now.toLocaleString("de-DE"),"Verantwortlicher (Art. 4 Nr. 7 DSGVO)":resp||"–","Reviewer":reviewer||"–","Zweck / Rechtsgrundlage":purpose||"Regelmäßige Berechtigungsüberprüfung (Art. 32 DSGVO, ISO 27001 A.5.18 / A.8.3, BSI ORP.4)","Audit-Lauf (RunId)":ri.RunId||"–","Ausgeführt von":state.pseudo?"(pseudonymisiert)":(ri.ExecutedBy||"–"),"Ausgeführt auf":ri.ExecutedOnFQDN||ri.ExecutedOn||"–","Skript-Version / SHA-256":(ri.ScriptVersion||"–")+" / "+(ri.ScriptSHA256||"–"),"ACL-Modus":ri.AclMode||"–","Targets":ri.Targets||"–","Start / Ende":(ri.Start||"–")+" – "+(ri.End||"–"),"Abdeckung lt. Skript":ri.Complete||"–"})}
+<h2>2. Datenintegrität</h2><table><thead><tr><th>Datei</th><th>Zeilen</th><th>Größe</th><th>SHA-256</th><th>Manifest</th></tr></thead><tbody>${files.map(f=>`<tr><td>${esc(f.name)}</td><td>${fmt(f.rows)}</td><td>${mib(f.size)}</td><td class="mono">${esc(f.hash||"")}</td><td class="${f.ok==="✓"?"ok":f.ok==="✗"?"bad":""}">${f.ok==="✓"?"bestätigt":f.ok==="✗"?"ABWEICHUNG":f.ok==="?"?"nicht im Manifest":"kein Manifest"}</td></tr>`).join("")}</tbody></table>
+<h2>3. Abdeckung je Ziel</h2>${summaryRows.length?`<table><thead><tr>${Object.keys(summaryRows[0]).map(k=>`<th>${esc(k)}</th>`).join("")}</tr></thead><tbody>${summaryRows.map(r=>`<tr>${Object.values(r).map(v=>`<td>${esc(v)}</td>`).join("")}</tr>`).join("")}</tbody></table>`:"<p>08_Summary.csv nicht geladen.</p>"}
+<h2>4. Kennzahlen</h2>${kv({"Matrix-Zeilen":fmt(state.counts.matrix),"Rollen (eindeutig)":fmt(state.matrixMetrics.roles),"Benutzer/Mitglieder (eindeutig)":fmt(state.matrixMetrics.users),"Ordner im Index":fmt(state.counts.folders),"Vererbungsbrüche":fmt(state.counts.inheritance),"Verwaiste SIDs":fmt(state.counts.orphans),"Audit-Fehler":fmt(state.counts.errors),"Prüfhinweise gesamt":fmt(state.counts.findings),"davon nach Priorität":SEV_ORDER.map(s=>`${s}: ${fmt(sevCount[s]||0)}`).join(", "),"nach Kategorie":Object.entries(catCount).filter(x=>x[1]).map(([k,v])=>`${k}: ${fmt(v)}`).join(", ")||"–","Rechteklassen (Matrix)":Object.entries(state.matrixMetrics.classCounts||{}).map(([k,v])=>`${k}: ${fmt(v)}`).join(", ")||"–","Review-Stand":Object.entries(rvStats).map(([k,v])=>`${k}: ${v}`).join(", ")||"keine Bewertungen"})}
+<h2>5. Prüfhinweise${fnd.truncated?` (erste ${fmt(fnd.rows.length)} von ${fmt(fnd.total)})`:` (${fmt(fnd.total)})`}</h2>${fnd.rows.length?rowsHtml(fh,fnd.rows,["Severity","Category","Title","Path","Role","UserOrMember","RightsClass","Detail","Status","Kommentar"]):"<p>Keine Prüfhinweise.</p>"}
+${sol?`<h2>6. Soll-Ist-Abweichungen${sol.truncated?` (erste ${fmt(sol.rows.length)} von ${fmt(sol.total)})`:` (${fmt(sol.total)})`}</h2><p>${sollMeta.counts.map(([t,n])=>`${esc(t)}: ${fmt(n)}`).join(" · ")}</p>${sol.rows.length?rowsHtml(sol.headers,sol.rows,["Abweichung","FolderPath","PermissionLayer","Role","RightsClass","SollRolle","SollMaxRechte","SollDataOwner","Status","Kommentar"]):"<p>Keine Abweichungen.</p>"}${sollMeta.unused.length?`<p><b>Soll-Einträge ohne Entsprechung im Ist (${sollMeta.unused.length}):</b> ${sollMeta.unused.map(u=>esc((u.Path||u.Pfad)+" / "+(u.Role||u.Rolle))).join("; ")}</p>`:""}`:"<h2>6. Soll-Ist-Abgleich</h2><p>Kein Soll-Konzept geladen – ein Need-to-know-Nachweis erfordert den Abgleich gegen ein dokumentiertes Berechtigungskonzept.</p>"}
+${deltaMeta?`<h2>7. Vergleich mit Vorlauf</h2>${kv({"Vergleichslauf":deltaMeta.compareName,"Zeilen aktuell / Vergleich":fmt(deltaMeta.current)+" / "+fmt(deltaMeta.compare),"Neue Berechtigungszeilen":fmt(deltaMeta.added),"Entfernte Berechtigungszeilen":fmt(deltaMeta.removed)})}<p>Details: Export „Delta_neue_Berechtigungen.csv“ / „Delta_entfernte_Berechtigungen.csv“.</p>`:""}
+${reportCache.effective?`<h2>8. Wirksame Berechtigung (Stichprobe)</h2><p><b>${esc(reportCache.effective.path)}</b></p>${reportCache.effective.notes.map(n=>`<p><i>${esc(n)}</i></p>`).join("")}<table><thead><tr>${reportCache.effective.headers.map(h=>`<th>${esc(h)}</th>`).join("")}</tr></thead><tbody>${reportCache.effective.rows.map(r=>`<tr>${r.map(v=>`<td>${esc(v)}</td>`).join("")}</tr>`).join("")}</tbody></table>`:""}
+<h2>Bestätigung</h2><p>Die vorstehenden Ergebnisse wurden geprüft. Abweichungen sind mit Status und Kommentar dokumentiert; „Zu bereinigen“ ist mit Frist nachzuverfolgen.</p><table class="kv"><tbody><tr><td>Reviewer / Datum / Unterschrift</td><td style="height:40px"></td></tr><tr><td>Verantwortlicher / Datum / Unterschrift</td><td style="height:40px"></td></tr></tbody></table>
+<p class="mono"> . Erzeugt mit FileServer Permission Audit WebGUI – DSGVO-konform.</p></body></html>`;
+  download(new Blob([html],{type:"text/html;charset=utf-8"}),`Nachweis_Berechtigungsaudit_${ri.RunId||now.toISOString().slice(0,10)}${state.pseudo?"_pseudonymisiert":""}.html`);
+}catch(err){status("Report fehlgeschlagen: "+err.message,true)}finally{btnReport.textContent="Nachweis-Report erzeugen";btnReport.disabled=false}};
+/* Nachweis-Report 2: Berechtigungsübersicht */
+function accessAsync(opts){return new Promise((res,rej)=>{const rid=++state.querySeq;reportCache.pending=reportCache.pending||{};reportCache.pending[rid]=r=>r.error?rej(new Error(r.error)):res(r);worker.postMessage({type:"access",requestId:rid,pathPrefix:opts.pathPrefix,layer:opts.layer,pairCap:opts.pairCap,pseudo:state.pseudo})})}
+const CLS_DE={FullControl:"Vollzugriff",SpecialAclControl:"ACL-Kontrolle",Modify:"Ändern",ReadWrite:"Lesen+Schreiben",WriteOnly:"Nur Schreiben",ReadExecute:"Lesen/Ausführen",Read:"Lesen",Special:"Spezial",None:"Keine",DENY:"VERWEIGERT"};
+const CLS_CSS={FullControl:"c-full",SpecialAclControl:"c-full",Modify:"c-mod",ReadWrite:"c-mod",WriteOnly:"c-mod",ReadExecute:"c-read",Read:"c-read",Special:"c-spec",None:"c-spec",DENY:"c-deny"};
+const clsChip=c=>`<span class="c ${CLS_CSS[c]||"c-spec"}" title="${esc(c)}">${esc(CLS_DE[c]||c)}</span>`;
+btnAccessReport.onclick=async()=>{btnAccessReport.disabled=true;const label=btnAccessReport.textContent;try{
+  const opts={pathPrefix:accPrefix.value.trim(),layer:accLayer.value,pairCap:(Number(accMaxPairs.value)||1500)*1000,includeUsers:accUsers.checked,memberLimit:Number(accMemberLimit.value)||300};
+  const a=await accessAsync(opts);
+  const now=new Date(),ri=Object.fromEntries(runInfo.map(r=>[r.Key,r.Value])),resp=$("rvResponsible").value.trim(),reviewer=$("rvReviewer").value.trim();
+  const files=[...state.loaded.entries()].map(([ds,f])=>{const v=verify(f.name,state.fileHashes[ds]);return{name:f.name,rows:f.rows,hash:state.fileHashes[ds],ok:v.icon}});
+  const css=`body{font-family:Segoe UI,Arial,sans-serif;font-size:12px;color:#111;margin:0;background:#fff}.wrap{max-width:1500px;margin:0 auto;padding:22px 28px}h1{font-size:21px;margin:0 0 4px}h2{font-size:16px;margin:30px 0 8px;padding-bottom:4px;border-bottom:2px solid #1d4ed8}h3{font-size:13px;margin:16px 0 6px}
+table{border-collapse:collapse;width:100%;font-size:11px;margin:6px 0;table-layout:fixed}th,td{border:1px solid #cfd6e0;padding:4px 6px;text-align:left;vertical-align:top;overflow-wrap:anywhere}th{background:#eef2f8}tr:nth-child(even) td{background:#fafbfd}.kv{table-layout:auto}.tp td:first-child{width:auto}
+.kv td:first-child{width:230px;font-weight:600;background:#f4f6fa}.mono{font-family:Consolas,monospace;font-size:10px}.muted{color:#667}.note{background:#f4f6fa;border-left:4px solid #1d4ed8;padding:8px 10px;margin:10px 0}.warn{background:#fff6e5;border-left-color:#d97706}
+.c{display:inline-block;padding:1px 6px;border-radius:4px;font-size:10px;font-weight:600;white-space:nowrap;margin:1px 2px 1px 0}.c-full{background:#fde2e4;color:#9f1239}.c-mod{background:#fff1cc;color:#92400e}.c-read{background:#dcfce7;color:#166534}.c-spec{background:#e5e7eb;color:#374151}.c-deny{background:#111;color:#fff}
+.tag{display:inline-block;padding:0 5px;border-radius:3px;font-size:10px;background:#e8edf5;color:#334;margin-right:3px}.broad{background:#fde2e4;color:#9f1239}.adm{background:#ede9fe;color:#5b21b6}.off{background:#fee2e2;color:#991b1b}.path{font-family:Consolas,monospace;font-size:10.5px;word-break:break-all}
+details{margin:6px 0}summary{cursor:pointer;font-weight:600;padding:5px 8px;background:#eef2f8;border:1px solid #cfd6e0;border-radius:4px}details[open]>summary{border-radius:4px 4px 0 0}.box{border:1px solid #cfd6e0;border-top:0;padding:6px 10px}
+.toc a{margin-right:14px}.tools{position:sticky;top:0;background:#fff;padding:8px 0;border-bottom:1px solid #ddd;z-index:5;display:flex;gap:10px;align-items:center}.tools input{padding:5px 8px;border:1px solid #bbb;border-radius:4px;min-width:280px}.hidden{display:none}
+.sig td{height:42px}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:8px;margin:8px 0}.card{border:1px solid #cfd6e0;border-radius:6px;padding:8px 10px}.card b{font-size:18px;display:block}
+@media print{.tools{display:none}details{page-break-inside:avoid}details>summary{list-style:none}.box{display:block!important}h2{page-break-after:avoid}}`;
+  const kv=o=>`<table class="kv"><tbody>${Object.entries(o).map(([k,v])=>`<tr><td>${esc(k)}</td><td>${v}</td></tr>`).join("")}</tbody></table>`;
+  const rcTag=rc=>rc==="Broad"?'<span class="tag broad">breit</span>':rc==="Admin"?'<span class="tag adm">Admin</span>':rc==="System"?'<span class="tag">System</span>':"";
+  const stTag=(en,inact)=>(en===false?'<span class="tag off">deaktiviert</span>':"")+(Number(inact)>=Number(inactiveDays.value||90)?`<span class="tag off">inaktiv ${esc(inact)} d</span>`:"");
+  const short=fp=>{const s=fp.replace(/^\\\\[^\\]+\\/,"");return s.length>90?"…"+s.slice(-88):s};
+  // --- 1. Ordner ---
+  const byShare=new Map();for(const f of a.folders){const k=f.drive+" \\\\"+f.server+"\\"+f.share;if(!byShare.has(k))byShare.set(k,[]);byShare.get(k).push(f)}
+  const folderHtml=[...byShare.entries()].map(([k,list])=>`<details open><summary>${esc(k)} <span class="muted">– ${fmt(list.length)} Ordner mit expliziten Berechtigungen</span></summary><div class="box"><table><colgroup><col style="width:32%"><col style="width:6%"><col style="width:26%"><col style="width:11%"><col style="width:17%"><col style="width:8%"></colgroup><thead><tr><th>Ordner</th><th>Ebene</th><th>Rolle / Identität</th><th>Recht</th><th>Gilt für</th><th>Mitglieder</th></tr></thead><tbody>${list.map(f=>f.aces.map((x,i)=>`<tr class="r" data-t="${esc(low(f.fp+" "+x.role+" "+x.identity))}">${i===0?`<td rowspan="${f.aces.length}"><span class="path">${esc(f.fp)}</span>${f.broken?' <span class="tag off">Vererbung unterbrochen</span>':""}</td>`:""}<td>${esc(x.layer)}</td><td>${esc(x.identity||x.role)} ${rcTag(x.rc)}${x.inh?'<span class="tag">geerbt</span>':""}</td><td>${clsChip(x.deny?"DENY":x.cls)}</td><td class="muted">${esc(x.appliesTo)}</td><td>${x.rc==="Broad"?"alle":fmt(x.persons)+(x.members!==x.persons?` <span class="muted">(+${fmt(x.members-x.persons)} sonst.)</span>`:"")}</td></tr>`).join("")).join("")}</tbody></table></div></details>`).join("");
+  // --- 2. Rollen ---
+  const roleHtml=a.roles.map(R=>`<details class="r" data-t="${esc(low(R.role+" "+R.identity+" "+R.members.map(x=>x.u).join(" ")))}"><summary>${esc(R.identity||R.role)} ${rcTag(R.rc)} <span class="muted">– ${esc(R.type||"")}${R.scope?" · "+esc(R.scope):""}${R.cat?" · "+esc(R.cat):""} · ${fmt(R.memberCount)} Mitglieder · ${fmt(R.folderCount)} Ordner${R.deny?` · <span class="tag off">${R.deny} Deny</span>`:""}</span></summary><div class="box">
+<b>Berechtigt auf</b><table><colgroup><col style="width:72%"><col style="width:10%"><col style="width:18%"></colgroup><thead><tr><th>Ordner</th><th>Ebene</th><th>Recht</th></tr></thead><tbody>${R.folders.slice(0,opts.memberLimit).map(f=>`<tr><td class="path">${esc(f.fp)}</td><td>${esc(f.layer)}</td><td>${clsChip(f.deny?"DENY":f.cls)}</td></tr>`).join("")}${R.folders.length>opts.memberLimit?`<tr><td colspan="3" class="muted">… ${fmt(R.folders.length-opts.memberLimit)} weitere</td></tr>`:""}</tbody></table>
+${R.members.length?`<b>Mitglieder (aufgelöst, inkl. verschachtelter Gruppen)</b><table><colgroup><col style="width:22%"><col style="width:24%"><col style="width:10%"><col style="width:14%"><col style="width:30%"></colgroup><thead><tr><th>Konto</th><th>Name</th><th>Typ</th><th>Status</th><th>über</th></tr></thead><tbody>${R.members.slice(0,opts.memberLimit).map(u=>`<tr><td>${esc(u.u)}</td><td>${esc(u.name)}</td><td>${esc(u.type)}</td><td>${u.enabled===true?"aktiv":""}${stTag(u.enabled,u.inact)}</td><td class="muted">${esc(u.via.join(" | "))}</td></tr>`).join("")}${R.members.length>opts.memberLimit?`<tr><td colspan="5" class="muted">… ${fmt(R.members.length-opts.memberLimit)} weitere</td></tr>`:""}</tbody></table>`:R.rc==="Broad"?'<p class="muted">Breite Identität – umfasst faktisch alle Benutzer, nicht aufgelöst.</p>':'<p class="muted">Keine aufgelösten Mitglieder (leere Gruppe, Direktzuweisung oder Auflösung nicht möglich).</p>'}</div></details>`).join("");
+  // --- 3. Benutzer ---
+  const userHtml=!opts.includeUsers?'<p class="muted">Benutzerabschnitt deaktiviert.</p>':a.users.map(U=>`<details class="r" data-t="${esc(low(U.u+" "+U.name+" "+U.roles.map(x=>x.role).join(" ")))}"><summary>${esc(U.u)} <span class="muted">${esc(U.name)} · ${esc(U.type)}</span> ${U.enabled===false?'<span class="tag off">deaktiviert</span>':""}${stTag(true,U.inact)}${Number(U.admin)>0?'<span class="tag adm">adminCount</span>':""}${U.direct?'<span class="tag off">Direktberechtigung</span>':""} <span class="muted">– ${U.roles.length} Rollen · ${fmt(U.accessTotal)} Zuweisungen → ${fmt(U.access.length)} Bereiche</span></summary><div class="box">
+<div><b>Rollen/Gruppen:</b> ${U.roles.map(r=>`<span class="tag">${esc(r.role)}</span>`).join(" ")}</div>
+<table><colgroup><col style="width:52%"><col style="width:8%"><col style="width:14%"><col style="width:26%"></colgroup><thead><tr><th>Zugriffsbereich (Unterordner mit gleichem/geringerem Recht zusammengefasst)</th><th>Ebene</th><th>Recht</th><th>über Rolle</th></tr></thead><tbody>${U.access.slice(0,opts.memberLimit).map(x=>`<tr><td class="path">${esc(x.fp)}</td><td>${esc(x.layer)}</td><td>${clsChip(x.cls)}</td><td class="muted">${esc(x.roles.join(", "))}</td></tr>`).join("")}${U.access.length>opts.memberLimit?`<tr><td colspan="4" class="muted">… ${fmt(U.access.length-opts.memberLimit)} weitere</td></tr>`:""}</tbody></table></div></details>`).join("");
+  const stats={users:a.users.length,enabledUsers:a.users.filter(u=>u.enabled!==false).length,disabled:a.users.filter(u=>u.enabled===false).length,direct:a.users.filter(u=>u.direct).length,rolesN:a.roles.filter(r=>r.memberCount>0).length,broad:a.roles.filter(r=>r.rc==="Broad").length,full:a.users.filter(u=>u.roles.some(r=>r.rank>=4)).length};
+  const html=`<!DOCTYPE html><html lang="de"><head><meta charset="utf-8"><title>Berechtigungsübersicht ${esc(ri.RunId||"")}</title><style>${css}</style></head><body><div class="wrap">
+<h1>Berechtigungsübersicht Fileserver – Nachweis</h1><div class="muted">Wer hat worauf welchen Zugriff · Audit-Lauf ${esc(ri.RunId||"–")} · erstellt ${now.toLocaleString("de-DE")}${a.pseudo?" · <b>pseudonymisiert</b>":""}</div>
+<div class="tools"><input id="q" placeholder="Filtern: Ordner, Rolle, Benutzer …"><span class="muted" id="qn"></span><button onclick="document.querySelectorAll('details').forEach(d=>d.open=true)">alle öffnen</button><button onclick="document.querySelectorAll('details').forEach(d=>d.open=false)">alle schließen</button><button onclick="window.print()">Drucken / PDF</button></div>
+<p class="toc"><a href="#s0">Rahmen</a><a href="#s1">Freigaben</a><a href="#s2">Ordner → Rollen</a><a href="#s3">Rollen → Mitglieder</a><a href="#s4">Benutzer → Zugriff</a><a href="#s5">Bestätigung</a></p>
+<div class="note">Grundlage ist die vom Audit-Skript erzeugte Berechtigungsmatrix (SMB- und NTFS-Ebene, Gruppen rekursiv aufgelöst). Gezeigt werden <b>explizit gesetzte</b> Berechtigungen; Unterordner ohne eigene Einträge erben vom nächsten aufgeführten Vorfahren (Ordner mit „Vererbung unterbrochen“ erben nicht). Das tatsächlich wirksame Recht ergibt sich aus NTFS ∩ SMB abzüglich Deny – Stichproben dazu im Nachweis-Report 1 / Tab „Wirksame Berechtigung“.${a.truncated?` <b>Achtung:</b> Benutzer-Zugriffspaare wurden bei ${fmt(a.pairs)} gekappt – Abschnitt 4 ist unvollständig; Pfadfilter setzen oder Limit erhöhen.`:""}${opts.pathPrefix?` <b>Pfadfilter:</b> ${esc(opts.pathPrefix)}`:""}${opts.layer?` <b>Ebene:</b> ${esc(opts.layer)}`:""}</div>
+<h2 id="s0">Rahmen</h2>${kv({"Verantwortlicher":esc(resp||"–"),"Reviewer":esc(reviewer||"–"),"Audit ausgeführt":esc((a.pseudo?"(pseudonymisiert)":ri.ExecutedBy||"–")+" auf "+(ri.ExecutedOnFQDN||ri.ExecutedOn||"–")+", "+(ri.Start||"–")),"Skript / SHA-256":esc((ri.ScriptVersion||"–")+" / "+(ri.ScriptSHA256||"–")),"Matrix-Zeilen ausgewertet":`${fmt(a.rowsUsed)} von ${fmt(a.rowsSeen)} (geerbte Duplikate ausgeblendet)`,"Eingabedateien":files.map(f=>`${esc(f.name)} ${f.ok==="✓"?'<span class="tag" style="background:#dcfce7;color:#166534">Manifest ✓</span>':f.ok==="✗"?'<span class="tag off">Manifest ✗</span>':""}`).join("<br>")||"–","Legende Rechte":["FullControl","Modify","ReadWrite","Read","DENY"].map(clsChip).join(" ")+' <span class="muted">Vollzugriff = darf Berechtigungen ändern · Ändern = lesen/schreiben/löschen · Lesen = nur lesen</span>'})}
+<div class="grid"><div class="card"><b>${fmt(a.folders.length)}</b>Ordner mit Berechtigungen</div><div class="card"><b>${fmt(stats.rolesN)}</b>Rollen/Gruppen mit Mitgliedern</div><div class="card"><b>${fmt(stats.users)}</b>Konten mit Zugriff <span class="muted">(${fmt(stats.disabled)} deaktiviert)</span></div><div class="card"><b>${fmt(stats.full)}</b>Konten mit Vollzugriff irgendwo</div><div class="card"><b>${fmt(stats.direct)}</b>Direktberechtigungen</div><div class="card"><b>${fmt(stats.broad)}</b>breite Identitäten in ACLs</div></div>
+<h2 id="s1">1. Freigaben</h2><table><colgroup><col style="width:10%"><col style="width:50%"><col style="width:20%"><col style="width:20%"></colgroup><thead><tr><th>Laufwerk</th><th>Freigabe</th><th>Ordner mit expliziten Berechtigungen</th><th>davon Vererbung unterbrochen</th></tr></thead><tbody>${a.shares.map(s=>`<tr><td>${esc(s.drive)}</td><td class="path">\\\\${esc(s.server)}\\${esc(s.share)}</td><td>${fmt(s.folders)}</td><td>${fmt(s.broken)}</td></tr>`).join("")}</tbody></table>
+<h2 id="s2">2. Ordner → Rollen und Rechte</h2>${folderHtml}
+<h2 id="s3">3. Rollen und Gruppen → Mitglieder</h2>${roleHtml}
+<h2 id="s4">4. Benutzer → Zugriff (zusammengefasst)</h2>${userHtml}
+<h2 id="s5">5. Bestätigung</h2><p>Die Übersicht wurde geprüft. Zugriffe, die nicht dem Need-to-know entsprechen, sind im Nachweis-Report 1 (Prüfhinweise/Soll-Ist) mit Status dokumentiert.</p><table class="kv sig"><tbody><tr><td>Reviewer / Datum / Unterschrift</td><td></td></tr><tr><td>Verantwortlicher / Datum / Unterschrift</td><td></td></tr></tbody></table>
+<p class="mono muted">Erzeugt mit FileServer Permission Audit WebGUI – DSGVO-konform.</p></div>
+<script>(function(){var q=document.getElementById('q'),n=document.getElementById('qn'),rows=document.querySelectorAll('.r');q.addEventListener('input',function(){var v=q.value.trim().toLowerCase(),c=0;rows.forEach(function(r){var h=!v||r.getAttribute('data-t').indexOf(v)>=0;r.classList.toggle('hidden',!h);if(h)c++;if(h&&v&&r.tagName==='DETAILS')r.open=true});n.textContent=v?c+' Treffer':''})})();<\/script></body></html>`;
+  download(new Blob([html],{type:"text/html;charset=utf-8"}),`Berechtigungsuebersicht_${ri.RunId||now.toISOString().slice(0,10)}${a.pseudo?"_pseudonymisiert":""}.html`);
+}catch(err){status("Berechtigungsübersicht fehlgeschlagen: "+err.message,true)}finally{btnAccessReport.textContent="Berechtigungsübersicht (HTML)";btnAccessReport.disabled=false}};
+
+window.addEventListener("beforeunload",e=>{if(state.review.size&&!reportCache.reviewSaved){e.preventDefault();e.returnValue=""}});
+btnReviewExport.addEventListener("click",()=>{reportCache.reviewSaved=true});
+dash({counts:{},matrixMetrics:state.matrixMetrics,memory:state.memory,findingTop:[],findingHeaders:[]});DS.forEach(ds=>renderTable(ds,[],[],0,1,100));
+</script>
+</body>
+</html>
